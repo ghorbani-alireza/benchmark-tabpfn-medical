@@ -29,8 +29,6 @@ All results presented in the manuscript are fully reproducible by running the sc
 benchmark-tabpfn-medical/
 │
 ├── README.md
-├── requirements.txt
-├── environment.yml
 │
 ├── simulation_study/
 │ ├── 11-17-2025-tabpfn_simulation_study.ipynb # Main simulation notebook (n=200, settings 1–8)
