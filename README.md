@@ -22,7 +22,7 @@ This repository contains the complete code for the paper *"Benchmarking TabPFN o
 All results presented in the manuscript are fully reproducible by running the scripts in this repository. Raw data and pre‑computed results are also available on the [OSF project page](https://osf.io/hjs92).
 
 ---
-
+```
 ## Repository Structure
 benchmark-tabpfn-medical/
 │
@@ -41,6 +41,7 @@ benchmark-tabpfn-medical/
 ├── 20250811_case_study_2_blood_glucose_management.ipynb # ICU glucose management
 ├── 20250902_case_study_3-bold_blood-gas_and_oximetry.ipynb # BOLD hypoxemia prediction
 └── results/ # Per‑iteration CSV files and aggregated tables
+```
 
 ## License
 
