@@ -22,8 +22,10 @@ This repository contains the complete code for the paper *"Benchmarking TabPFN o
 All results presented in the manuscript are fully reproducible by running the scripts in this repository. Raw data and pre‑computed results are also available on the [OSF project page](https://osf.io/hjs92).
 
 ---
-```
 ## Repository Structure
+
+```
+
 benchmark-tabpfn-medical/
 │
 ├── README.md
