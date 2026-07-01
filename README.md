@@ -25,17 +25,29 @@ All results presented in the manuscript are fully reproducible by running the sc
 
 ## Repository Structure
 benchmark-tabpfn-medical/
+
 ├── README.md
+
 ├── requirements.txt
+
 ├── environment.yml
+
 ├── real_data_study/
+
 │ ├── results/
+
 │ ├── 20250723_case_study_1-echo_note.ipynb
+
 │ ├── 20250811_case_study_2_blood_glucose_management.ipynb
+
 │ └── 20250902_case_study_3-bold_blood-gas_and_oximetry.ipynb
+
 |
+
 ├── simualtion_study/
+
 │ ├── 11-17-2025-tabpfn_simulation_study.ipynb
+
 │ ├── plots\
 │ ├── sim_results\
 │ └── stables\
