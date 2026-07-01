@@ -25,32 +25,22 @@ All results presented in the manuscript are fully reproducible by running the sc
 
 ## Repository Structure
 benchmark-tabpfn-medical/
-
+│
 ├── README.md
-
 ├── requirements.txt
-
 ├── environment.yml
-
-├── real_data_study/
-
-│ ├── results/
-
-│ ├── 20250723_case_study_1-echo_note.ipynb
-
-│ ├── 20250811_case_study_2_blood_glucose_management.ipynb
-
-│ └── 20250902_case_study_3-bold_blood-gas_and_oximetry.ipynb
-
-|
-
-├── simualtion_study/
-
-│ ├── 11-17-2025-tabpfn_simulation_study.ipynb
-
-│ ├── plots\
-│ ├── sim_results\
-│ └── stables\
+│
+├── simulation_study/
+│ ├── 11-17-2025-tabpfn_simulation_study.ipynb # Main simulation notebook (n=200, settings 1–8)
+│ ├── plots/ # Generated figures (boxplots, calibration curves)
+│ ├── sim_results/ # Raw CSV outputs per repeat (100 repeats per setting)
+│ └── tables/ # Aggregated tables (mean ± SD) in CSV/LaTeX format
+│
+└── real_data_study/
+├── 20250723_case_study_1-echo_note.ipynb # EchoNotes (MIMIC‑III) case study
+├── 20250811_case_study_2_blood_glucose_management.ipynb # ICU glucose management
+├── 20250902_case_study_3-bold_blood-gas_and_oximetry.ipynb # BOLD hypoxemia prediction
+└── results/ # Per‑iteration CSV files and aggregated tables
 
 ## License
 
