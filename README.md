@@ -3,7 +3,7 @@
 **Authors:** Alireza Ghorbani, Mohammad Khajehzadeh, Anne‑Laure Boulesteix, Moritz Herrmann  
 **Corresponding author:** ghorbani.alireza@campus.lmu.de  
 **OSF Repository:** [https://osf.io/hjs92](https://osf.io/hjs92)  
-**GitHub Repository:** [https://github.com/yourusername/benchmark-tabpfn-medical](https://github.com/yourusername/benchmark-tabpfn-medical)
+**GitHub Repository:** [https://github.com/ghorbani-alireza/benchmark-tabpfn-medical](https://github.com/ghorbani-alireza/benchmark-tabpfn-medical)
 
 ---
 
