@@ -9,7 +9,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GridSearchCV
 from sklearn.preprocessing import StandardScaler
-print("sklearn package version:", version("sklearn"))
+print("scikit‑learn package version:", version("scikit-learn"))
 from xgboost import XGBClassifier
 print("XGBoost package version:", version("xgboost"))
 from catboost import CatBoostClassifier

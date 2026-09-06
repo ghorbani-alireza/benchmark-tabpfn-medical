@@ -1,4 +1,3 @@
-
 import time
 from tqdm import tqdm
 import numpy as np
@@ -18,7 +17,6 @@ from .model_definitions import (
     run_catboost,
     run_tabpfn
 )
-from .utils import capture_warnings
 
 
 # resampling Functions for realdata
@@ -172,8 +170,6 @@ def evaluate_on_real_data(X, y, n, iter=100, g_seed = 2025):
             f"Class 0: have {len(idx0)}, need {n1_tr + n1_te}\n"
             f"Class 1: have {len(idx1)}, need {n2_tr + n2_te}"
         )
-
-    global capture_warnings
 
     errors = {
         'L-SLR_MSE': [], 'L-SLR_AUC': [], 'L-SLR_Time': [], 'L-SLR_FPR': [], 'L-SLR_TPR': [],

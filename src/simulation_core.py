@@ -23,6 +23,7 @@ from .model_definitions import (
 from . import utils 
 
 
+
 # Simulation Function
 def simulation(n, mu, sigma1, sigma2, df=5, dist="Normal", iter=100, g_seed=2025):
     n1_tr, n2_tr = n['n1_tr'], n['n2_tr']
@@ -52,7 +53,8 @@ def simulation(n, mu, sigma1, sigma2, df=5, dist="Normal", iter=100, g_seed=2025
         'TabPFN_Probas': [],
         'y_test_all': []
     }
-
+    
+    captured_warnings = [] 
 
     for i in tqdm(range(iter), desc=f"Sim {dist} Iterations"):
         utils.current_iteration = i
@@ -216,4 +218,4 @@ def simulation(n, mu, sigma1, sigma2, df=5, dist="Normal", iter=100, g_seed=2025
         errors['TabPFN_CalSlope'].append(cal_model.coef_[0][0])
         errors['TabPFN_CalIntercept'].append(cal_model.intercept_[0])
 
-    return errors
+    return errors, captured_warnings   

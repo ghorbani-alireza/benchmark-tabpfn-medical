@@ -9,10 +9,7 @@ import numpy as np
 import pandas as pd
 from sklearn.exceptions import ConvergenceWarning
 
-from .config import (
-    REAL_DATA_PATH,
-    SIM_RESULTS_PATH
-)
+from . import config
 
 
 # fix multiple DataFrames at once
@@ -102,7 +99,8 @@ def create_summary(errors, setting_name="", metadata=None):
 #################################################################################
 
 # function to save simulation
-def save_simulation_outputs(errors, captured_warnings, setting_name, n, mu, dist, iter_):
+def save_simulation_outputs(errors, captured_warnings, setting_name, n, mu, dist, iter_,
+                            errors_filename=None, summary_filename=None, warnings_filename=None):
 
     # default filenames
     if errors_filename is None:
@@ -116,7 +114,7 @@ def save_simulation_outputs(errors, captured_warnings, setting_name, n, mu, dist
     # errors
     errors_copy = errors.copy()
     errors_df = pd.DataFrame(errors_copy)
-    errors_df.to_csv(SIM_RESULTS_PATH + errors_filename, index=True)
+    errors_df.to_csv(config.SIM_RESULTS_PATH + errors_filename, index=True)
     print(f"✓ Errors saved to {errors_filename}")
 
     # free memory
@@ -127,7 +125,7 @@ def save_simulation_outputs(errors, captured_warnings, setting_name, n, mu, dist
     # warnings if any
     if captured_warnings:
         warnings_df = pd.DataFrame(captured_warnings)
-        warnings_df.to_csv(SIM_RESULTS_PATH + warnings_filename, index=True)
+        warnings_df.to_csv(config.SIM_RESULTS_PATH + warnings_filename, index=True)
         print(f"✓ Warnings saved to {warnings_filename} (total: {len(captured_warnings)})")
         del warnings_df
     else:
@@ -136,7 +134,7 @@ def save_simulation_outputs(errors, captured_warnings, setting_name, n, mu, dist
     # summary
     summary_df = create_summary(errors, setting_name,
                                 metadata=make_metadata(n, mu, dist, iter_))
-    summary_df.to_csv(SIM_RESULTS_PATH + summary_filename, index=True)
+    summary_df.to_csv(config.SIM_RESULTS_PATH + summary_filename, index=True)
     print(f"✓ Summary saved to {summary_filename}")
 
     # memory
@@ -148,7 +146,8 @@ def save_simulation_outputs(errors, captured_warnings, setting_name, n, mu, dist
 
 
 # save real data outputs - the same as above
-def save_real_data_outputs(errors, captured_warnings, dataset_name, n, iter_):
+def save_real_data_outputs(errors, dataset_name, n, iter_,
+                           errors_filename=None, summary_filename=None, warnings_filename=None):
 
     if errors_filename is None:
         errors_filename = f"{dataset_name.lower().replace(' ', '_')}_errors.csv"
@@ -160,25 +159,16 @@ def save_real_data_outputs(errors, captured_warnings, dataset_name, n, iter_):
     # errors
     errors_copy = errors.copy()
     errors_df = pd.DataFrame(errors_copy)
-    errors_df.to_csv(REAL_DATA_PATH + errors_filename, index=True)
+    errors_df.to_csv(config.REAL_DATA_PATH + errors_filename, index=True)
     print(f"✓ Errors saved to {errors_filename}")
 
     del errors_copy, errors_df
     gc.collect()
 
-    # warnings if any
-    if captured_warnings:
-        warnings_df = pd.DataFrame(captured_warnings)
-        warnings_df.to_csv(REAL_DATA_PATH + warnings_filename, index=True)
-        print(f"✓ Warnings saved to {warnings_filename} (total: {len(captured_warnings)})")
-        del warnings_df
-    else:
-        print("✓ No warnings were captured")
-
     # summary
     metadata = make_real_metadata(dataset_name, n, iter_)
     summary_df = create_summary(errors, setting_name=dataset_name, metadata=metadata)
-    summary_df.to_csv(REAL_DATA_PATH + summary_filename, index=True)
+    summary_df.to_csv(config.REAL_DATA_PATH + summary_filename, index=True)
     print(f"✓ Summary saved to {summary_filename}")
 
     del summary_df, errors
