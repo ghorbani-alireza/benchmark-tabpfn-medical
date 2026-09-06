@@ -1,0 +1,5 @@
+# Tokens 
+HF_TOKEN = "  " #huggingface
+TABPFN_TOKEN = "   " #priorlabs
+
+# insert your own tokens and remove ".txt" from this file name to have "tokens.py"
