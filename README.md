@@ -52,8 +52,7 @@ After downloading, place the `.pkl` files inside `io/real_data/`.
 ---
 
 ## License
-
-This project is licensed under the MIT License – see the [LICENSE](LICENSE) file for details.
+This project is distributed under the MIT License.
 
 ---
 
