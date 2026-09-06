@@ -12,7 +12,6 @@ benchmark-tabpfn-medical/
 ├── pyproject.toml                          # metadata and dependencies
 ├── requirements.txt                        
 ├── README.md
-├── LICENSE
 │
 ├── src/                                    # source code
 │ ├── init.py
