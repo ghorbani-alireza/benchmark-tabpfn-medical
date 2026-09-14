@@ -28,7 +28,7 @@ benchmark-tabpfn-medical/
 │ └── run_analysis.ipynb
 │
 └── io/                                      # input/output data and results
-├── real_data/                               # place the OSF datasets in this dir
+├── real_data/                               # place the datasets in this dir
 │ ├── data1_echo_notes.pkl
 │ ├── data2_blood_glucose_management.pkl
 │ └── data3_blood_gas_oximetry.pkl
