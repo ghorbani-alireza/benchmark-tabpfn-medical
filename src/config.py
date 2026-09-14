@@ -7,8 +7,9 @@ PLOTS_PATH = None
 
 
 def set_paths(main_path):
-    global MAIN_PATH, REAL_DATA_PATH, SIM_RESULTS_PATH, TABLES_PATH, PLOTS_PATH
+    global MAIN_PATH, REAL_RESULTS_PATH, REAL_DATA_PATH, SIM_RESULTS_PATH, TABLES_PATH, PLOTS_PATH
     MAIN_PATH = main_path
+    REAL_RESULTS_PATH = MAIN_PATH + "io/real_data_results/"
     REAL_DATA_PATH = MAIN_PATH + "io/real_data/"
     SIM_RESULTS_PATH = MAIN_PATH + "io/sim_results/"
     TABLES_PATH = MAIN_PATH + "io/tables/"

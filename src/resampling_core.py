@@ -21,7 +21,7 @@ from .model_definitions import (
 
 # resampling Functions for realdata
 
-# part2 - fucntion for single iteration calcualtion
+# part1 - fucntion for single iteration calcualtion
 def _single_real_iteration(i, X_np, y_np, idx0, idx1,
                            n1_tr, n2_tr, n1_te, n2_te, g_seed):
 

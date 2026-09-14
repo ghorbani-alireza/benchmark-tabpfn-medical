@@ -159,7 +159,7 @@ def save_real_data_outputs(errors, dataset_name, n, iter_,
     # errors
     errors_copy = errors.copy()
     errors_df = pd.DataFrame(errors_copy)
-    errors_df.to_csv(config.REAL_DATA_PATH + errors_filename, index=True)
+    errors_df.to_csv(config.REAL_RESULTS_PATH + errors_filename, index=True)
     print(f"✓ Errors saved to {errors_filename}")
 
     del errors_copy, errors_df
@@ -168,7 +168,7 @@ def save_real_data_outputs(errors, dataset_name, n, iter_,
     # summary
     metadata = make_real_metadata(dataset_name, n, iter_)
     summary_df = create_summary(errors, setting_name=dataset_name, metadata=metadata)
-    summary_df.to_csv(config.REAL_DATA_PATH + summary_filename, index=True)
+    summary_df.to_csv(config.REAL_RESULTS_PATH + summary_filename, index=True)
     print(f"✓ Summary saved to {summary_filename}")
 
     del summary_df, errors
@@ -227,7 +227,7 @@ def capture_warnings(message, category, filename, lineno, file=None, line=None):
     })
 
 # convergenceWarning display
-#warnings.filterwarnings('ignore', category=ConvergenceWarning)
+warnings.filterwarnings('ignore', category=ConvergenceWarning)
 
 # tabpfn logging output
 logging.getLogger('tabpfn').setLevel(logging.ERROR)
