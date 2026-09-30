@@ -12,7 +12,8 @@ def build_combined_table(summary_dfs, setting_names, filename,
         metrics = ['AUC', 'MSE', 'Time']
     if error_metrics is None:
         error_metrics = []
-    methods = ['L-SLR', 'SLR', 'RandomForest', 'XGBoost', 'CatBoost', 'TabPFN']
+    methods = ['L-SLR', 'SLR', 'RandomForest', 'XGBoost', 'CatBoost', 'TabPFN_25',
+               'TabPFN_v26', 'TabPFN_v3', 'TabPFN_v35', 'Mitra-V2', 'TabFM']
     rows = []
 
     for setting, df, err_df in zip(setting_names, summary_dfs, errors_list):
@@ -78,7 +79,8 @@ def build_combined_table(summary_dfs, setting_names, filename,
 
 # sensitivity gain table
 def build_gain_table(base_dfs, sens_dfs, setting_names, filename, metric='AUC_Mean'):
-    methods = ['L-SLR', 'SLR', 'RandomForest', 'XGBoost', 'CatBoost','TabPFN']
+    methods = ['L-SLR', 'SLR', 'RandomForest', 'XGBoost', 'CatBoost','TabPFN_v25', 
+               'TabPFN_v26', 'TabPFN_v3', 'TabPFN_v35', 'TabFM']
     gain_data = []
     for base_df, sens_df, name in zip(base_dfs, sens_dfs, setting_names):
         delta = sens_df.loc[methods, metric] - base_df.loc[methods, metric]
@@ -111,7 +113,8 @@ def build_auc_brier_table(summary_dfs, errors_list, setting_names, filename, err
     if error_metrics is None:
         error_metrics = ['Brier']
 
-    methods = ['L-SLR', 'SLR', 'RandomForest', 'XGBoost', 'CatBoost', 'TabPFN']
+    methods = ['L-SLR', 'SLR', 'RandomForest', 'XGBoost', 'CatBoost','TabPFN_v25', 
+               'TabPFN_v26', 'TabPFN_v3', 'TabPFN_v35', 'TabFM']
     rows = []
 
 

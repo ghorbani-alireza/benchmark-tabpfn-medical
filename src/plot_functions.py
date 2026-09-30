@@ -11,13 +11,17 @@ def plot_roc_curves_grid(errors_dict, settings_to_show, dir=PLOTS_PATH,
                          figsize=(12, 10), save_path=None):
     # color scheme
     color_scheme = {
-        'SLR': '#ff7f0e',
-        'L-SLR': '#2ca02c',
-        'RandomForest': '#d62728',
-        'XGBoost': '#9467bd',
-        'CatBoost': '#8c564b',
-        'TabPFN': '#1f77b4'
-    }
+            'SLR': '#ff7f0e',
+            'L-SLR': '#2ca02c',
+            'RandomForest': '#d62728',
+            'XGBoost': '#9467bd',
+            'CatBoost': '#8c564b',
+            'TabPFN_v25': '#1f77b4',
+            'TabPFN_v26': '#b920bf',
+            'TabPFN_v3': "#0adceb",
+            'TabPFN_v35': "#f4b734",
+            'TabFM': "#320327"
+        }
     models = list(color_scheme.keys())
 
     n_settings = len(settings_to_show)
@@ -125,7 +129,11 @@ def plot_boxplots_grid(errors_dict, settings_to_show, metric='MSE',
         'RandomForest': '#d62728',
         'XGBoost': '#9467bd',
         'CatBoost': '#8c564b',
-        'TabPFN': '#1f77b4'
+        'TabPFN_v25': '#1f77b4',
+        'TabPFN_v26': '#b920bf',
+        'TabPFN_v3': "#0adceb",
+        'TabPFN_v35': "#f4b734",
+        'TabFM': "#320327"
     }
     models = list(color_scheme.keys())
 
@@ -201,7 +209,11 @@ def plot_boxplots_grid_lands(errors_dict, settings_to_show, metric='MSE',
         'RandomForest': '#d62728',
         'XGBoost': '#9467bd',
         'CatBoost': '#8c564b',
-        'TabPFN': '#1f77b4'
+        'TabPFN_v25': '#1f77b4',
+        'TabPFN_v26': "#b920bf",
+        'TabPFN_v3': "#0adceb",
+        'TabPFN_v35': "#f4b734",
+        'TabFM': "#320327"
     }
     models = list(color_scheme.keys())
 
@@ -272,7 +284,11 @@ def plot_calibration_grid(errors_dict, settings_to_show, n_bins=10, strategy='un
         'RandomForest': '#d62728',
         'XGBoost': '#9467bd',
         'CatBoost': '#8c564b',
-        'TabPFN': '#1f77b4'
+        'TabPFN_v25': '#1f77b4',
+        'TabPFN_v26': "#b920bf",
+        'TabPFN_v3': "#0adceb",
+        'TabPFN_v35': "#f4b734",
+        'TabFM': "#320327"
     }
     models = list(color_scheme.keys())
 
@@ -346,7 +362,11 @@ def plot_brier_vs_auc_grid(errors_dict, settings_to_show, dir=PLOTS_PATH,
         'RandomForest': '#d62728',
         'XGBoost': '#9467bd',
         'CatBoost': '#8c564b',
-        'TabPFN': '#1f77b4'
+        'TabPFN_v25': '#1f77b4',
+        'TabPFN_v26': "#b920bf",
+        'TabPFN_v3': "#0adceb",
+        'TabPFN_v35': "#f4b734",
+        'TabFM': "#320327"
     }
     models = list(color_scheme.keys())
 
@@ -413,7 +433,11 @@ def plot_runtime_barplot_simple(errors_dict, settings_to_show,
         'RandomForest': '#d62728',
         'XGBoost': '#9467bd',
         'CatBoost': '#8c564b',
-        'TabPFN': '#1f77b4'
+        'TabPFN_v25': '#1f77b4',
+        'TabPFN_v26': "#b920bf",
+        'TabPFN_v3': "#0adceb",
+        'TabPFN_v35': "#f4b734",
+        'TabFM': "#320327"
     }
     methods = ['SLR','L-SLR', 'RandomForest', 'XGBoost', 'CatBoost', 'TabPFN']
 

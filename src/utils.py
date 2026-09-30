@@ -54,7 +54,9 @@ def make_real_metadata(dataset_name, n, iter):
 # Summary Table
 def create_summary(errors, setting_name="", metadata=None):
 
-    methods = ['L-SLR', 'SLR', 'RandomForest', 'XGBoost', 'CatBoost', 'TabPFN']
+    methods = ['L-SLR', 'SLR', 'RandomForest', 'XGBoost', 'CatBoost',
+           'TabPFN_25', 'TabPFN_v26', 'TabPFN_v3', 'TabPFN_v35',
+           'Mitra-V2', 'TabFM']
 
     summary_dict = {}
 

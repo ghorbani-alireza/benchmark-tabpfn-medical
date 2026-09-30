@@ -17,7 +17,6 @@ def set_paths(main_path):
 
 
 # Settings
-USE_TABPFN_CLIENT = False # Flase: local; True: client
 #two option for tabpfn
 # clinet or local - client is GPU but limited
 # https://ux.priorlabs.ai
