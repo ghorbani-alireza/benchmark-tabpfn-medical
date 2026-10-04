@@ -1,22 +1,24 @@
-# config.py
-MAIN_PATH = None
-REAL_DATA_PATH = None
-SIM_RESULTS_PATH = None
-TABLES_PATH = None
-PLOTS_PATH = None
+#src/config.py
+from pathlib import Path
 
+# src/config.py → parent.parent → project root
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-def set_paths(main_path):
-    global MAIN_PATH, REAL_RESULTS_PATH, REAL_DATA_PATH, SIM_RESULTS_PATH, TABLES_PATH, PLOTS_PATH
-    MAIN_PATH = main_path
-    REAL_RESULTS_PATH = MAIN_PATH + "io/real_data_results/"
-    REAL_DATA_PATH = MAIN_PATH + "io/real_data/"
-    SIM_RESULTS_PATH = MAIN_PATH + "io/sim_results/"
-    TABLES_PATH = MAIN_PATH + "io/tables/"
-    PLOTS_PATH = MAIN_PATH + "io/plots/"
+REQUIREMENTS_PATH = PROJECT_ROOT / "requirements.txt"
+IO_DIR            = PROJECT_ROOT / "io"
 
+REAL_DATA_DIR     = IO_DIR / "real_data"
+REAL_RESULTS_DIR  = IO_DIR / "real_data_results"
+SIM_RESULTS_DIR   = IO_DIR / "sim_results"
+TABLES_DIR        = IO_DIR / "tables"
+PLOTS_DIR         = IO_DIR / "plots"
 
-# Settings
-#two option for tabpfn
-# clinet or local - client is GPU but limited
-# https://ux.priorlabs.ai
+for _d in (REAL_DATA_DIR, REAL_RESULTS_DIR, SIM_RESULTS_DIR, TABLES_DIR, PLOTS_DIR):
+    _d.mkdir(parents=True, exist_ok=True)
+
+# Back-compat aliases for any code still using the old names
+SIM_RESULTS_PATH  = str(SIM_RESULTS_DIR) + "/"
+REAL_RESULTS_PATH = str(REAL_RESULTS_DIR) + "/"
+REAL_DATA_PATH    = str(REAL_DATA_DIR) + "/"
+TABLES_PATH       = str(TABLES_DIR) + "/"
+PLOTS_PATH        = str(PLOTS_DIR) + "/"

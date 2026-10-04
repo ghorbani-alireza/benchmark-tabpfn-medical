@@ -5,7 +5,7 @@ catboost==1.2.10
 xgboost==3.4.1
 scikit-learn==1.7.2
 joblib==1.6.0
-numpy==2.3.1
+numpy==2.5.3
 pandas==2.3.3
 scipy==1.18.1
 
@@ -14,12 +14,10 @@ matplotlib==3.11.2
 plotly==7.1.0
 tqdm==4.70.1
 
-# ── JAX stack (TabFM backend) ──
-jax==0.10.1
-flax==0.12.7
-
 # ── HuggingFace (TabPFN auth) ──
 huggingface-hub==1.33.0
+safetensors==0.8.0
+certifi==2026.7.22
 
 # ── TabPFN transitive deps ──
 tabpfn-common-utils[telemetry-interactive]==0.2.23
@@ -33,10 +31,10 @@ filelock==4.0.7
 lightgbm==4.7.0
 skrub==0.10.1
 
-# ── Mitra-v2 (via AutoGluon) ──
-autogluon.tabular[mitra]==1.6.2
 
-# ── TabFM (JAX backend) — pinned to commit ──
-tabfm[jax] @ git+https://github.com/google-research/tabfm.git@v1.0.1
-safetensors==0.8.0
-certifi==2026.7.22
+# ── EXAONE Tabular — pinned to exact commit for reproducibility ──
+exaonetabular @ git+https://github.com/LGAI-Research/EXAONE-Tabular.git@8638e07d09fad154249bd75ba4786181491f7025
+
+
+# ── TabICL ──
+tabicl==2.2.0

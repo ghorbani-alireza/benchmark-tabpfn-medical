@@ -23,8 +23,8 @@ from .model_definitions import (
     run_tabpfn_v26,
     run_tabpfn_v3,
     run_tabpfn_v35,
-    run_mitra_v2,
-    run_tabfm
+    run_exaone,
+    run_tabicl
 )
 from . import utils 
 
@@ -57,7 +57,7 @@ def _run_and_store(errors, prefix, fn, y_test, *args, **kwargs):
     errors[f'{prefix}_Probas'].append(proba)
 
 # Simulation Function - normal loop
-def simulation(n, mu, sigma1, sigma2, df=5, dist="Normal", iter=100, g_seed=2025):
+def simulation(n, mu, sigma1, sigma2, df=None, dist="Normal", iter=100, g_seed=2025):
     n1_tr, n2_tr = n['n1_tr'], n['n2_tr']
     n1_te, n2_te = n['n1_te'], n['n2_te']
     mu1, mu2 = mu['mu1'], mu['mu2']
@@ -92,12 +92,12 @@ def simulation(n, mu, sigma1, sigma2, df=5, dist="Normal", iter=100, g_seed=2025
         'TabPFN_v35_MSE': [], 'TabPFN_v35_AUC': [], 'TabPFN_v35_Time': [], 'TabPFN_v35_FPR': [], 'TabPFN_v35_TPR': [],
         'TabPFN_v35_Brier': [], 'TabPFN_v35_CalSlope': [], 'TabPFN_v35_CalIntercept': [],
         'TabPFN_v35_Probas': [],
-        #'mitra_v2_MSE': [], 'mitra_v2_AUC': [], 'mitra_v2_Time': [], 'mitra_v2_FPR': [], 'mitra_v2_TPR': [],
-        #'mitra_v2_Brier': [], 'mitra_v2_CalSlope': [], 'mitra_v2_CalIntercept': [],
-        #'mitra_v2_Probas': [],
-        #'tabfm_MSE': [], 'tabfm_AUC': [], 'tabfm_Time': [], 'tabfm_FPR': [], 'tabfm_TPR': [],
-        #'tabfm_Brier': [], 'tabfm_CalSlope': [], 'tabfm_CalIntercept': [],
-        #'tabfm_Probas': [],
+        'EXAONE_MSE': [], 'EXAONE_AUC': [], 'EXAONE_Time': [], 'EXAONE_FPR': [], 'EXAONE_TPR': [],
+        'EXAONE_Brier': [], 'EXAONE_CalSlope': [], 'EXAONE_CalIntercept': [],
+        'EXAONE_Probas': [],
+        'TabICL-V2_MSE': [], 'TabICL-V2_AUC': [], 'TabICL-V2_Time': [], 'TabICL-V2_FPR': [], 'TabICL-V2_TPR': [],
+        'TabICL-V2_Brier': [], 'TabICL-V2_CalSlope': [], 'TabICL-V2_CalIntercept': [],
+        'TabICL-V2_Probas': [],
         'y_test_all': []
     }
     
@@ -177,11 +177,11 @@ def simulation(n, mu, sigma1, sigma2, df=5, dist="Normal", iter=100, g_seed=2025
         _run_and_store(errors, 'TabPFN_v35', run_tabpfn_v35, y_test,
                X_train, X_test, y_train, y_test, random_state=i+g_seed)
 
-        #_run_and_store(errors, 'Mitra-V2', run_mitra_v2, y_test,
-        #       X_train, X_test, y_train, y_test, random_state=i+g_seed)
-
-        #_run_and_store(errors, 'TabFM', run_tabfm, y_test,
-        #       X_train, X_test, y_train, y_test, random_state=i+g_seed)
+        _run_and_store(errors, 'EXAONE', run_exaone, y_test,
+               X_train, X_test, y_train, y_test, random_state=i+g_seed)
+        
+        _run_and_store(errors, 'TabICL-V2', run_tabicl, y_test,
+               X_train, X_test, y_train, y_test, random_state=i+g_seed)
 
     return errors, captured_warnings
         
@@ -191,7 +191,7 @@ def simulation(n, mu, sigma1, sigma2, df=5, dist="Normal", iter=100, g_seed=2025
 # parallel simulation function
 
 # part 1 - function to evaluate on simulated data in parallel
-def evaluate_on_sim_data(n, mu, sigma1, sigma2, df=5, dist="Normal", iter=100, g_seed=2025):
+def evaluate_on_sim_data(n, mu, sigma1, sigma2, df=None, dist="Normal", iter=100, g_seed=2025):
     n1_tr, n2_tr = n['n1_tr'], n['n2_tr']
     n1_te, n2_te = n['n1_te'], n['n2_te']
     mu1, mu2 = mu['mu1'], mu['mu2']
@@ -226,12 +226,12 @@ def evaluate_on_sim_data(n, mu, sigma1, sigma2, df=5, dist="Normal", iter=100, g
         'TabPFN_v35_MSE': [], 'TabPFN_v35_AUC': [], 'TabPFN_v35_Time': [], 'TabPFN_v35_FPR': [], 'TabPFN_v35_TPR': [],
         'TabPFN_v35_Brier': [], 'TabPFN_v35_CalSlope': [], 'TabPFN_v35_CalIntercept': [],
         'TabPFN_v35_Probas': [],
-        'mitra_v2_MSE': [], 'mitra_v2_AUC': [], 'mitra_v2_Time': [], 'mitra_v2_FPR': [], 'mitra_v2_TPR': [],
-        'mitra_v2_Brier': [], 'mitra_v2_CalSlope': [], 'mitra_v2_CalIntercept': [],
-        'mitra_v2_Probas': [],
-        'tabfm_MSE': [], 'tabfm_AUC': [], 'tabfm_Time': [], 'tabfm_FPR': [], 'tabfm_TPR': [],
-        'tabfm_Brier': [], 'tabfm_CalSlope': [], 'tabfm_CalIntercept': [],
-        'tabfm_Probas': [],
+        'EXAONE_MSE': [], 'EXAONE_AUC': [], 'EXAONE_Time': [], 'EXAONE_FPR': [], 'EXAONE_TPR': [],
+        'EXAONE_Brier': [], 'EXAONE_CalSlope': [], 'EXAONE_CalIntercept': [],
+        'EXAONE_Probas': [],
+        'TabICL-V2_MSE': [], 'TabICL-V2_AUC': [], 'TabICL-V2_Time': [], 'TabICL-V2_FPR': [], 'TabICL-V2_TPR': [],
+        'TabICL-V2_Brier': [], 'TabICL-V2_CalSlope': [], 'TabICL-V2_CalIntercept': [],
+        'TabICL-V2_Probas': [],
         'y_test_all': []
     }
     
@@ -257,8 +257,8 @@ def evaluate_on_sim_data(n, mu, sigma1, sigma2, df=5, dist="Normal", iter=100, g
             ('TabPFN_v26', 'TabPFN_v26_'),
             ('TabPFN_v3', 'TabPFN_v3_'),
             ('TabPFN_v35', 'TabPFN_v35_'),
-            ('mitra_v2', 'mitra_v2_'),
-            ('tabfm', 'tabfm_')
+            ('EXAONE', 'EXAONE_'),
+            ('TabICL-V2', 'TabICL-V2_')
         ]:
             (t, mse, auc, fpr, tpr, proba, brier, slope, intercept) = res[key]
             errors[prefix + 'Time'].append(t)
@@ -291,7 +291,7 @@ def _single_sim_iteration(i, n1_tr, n2_tr, n1_te, n2_te, mu1, mu2,
         Te_x2 = rng_te.multivariate_normal(mean=mu2, cov=sigma2, size=n2_te)
     elif dist == "t":
         # compute scale matrices
-        if df <= 2:
+        if df is None or df <= 2:
             raise ValueError("Degrees of freedom must be > 2 for valid variance")
         scale1 = sigma1 * (df - 2) / df
         scale2 = sigma2 * (df - 2) / df
@@ -354,12 +354,12 @@ def _single_sim_iteration(i, n1_tr, n2_tr, n1_te, n2_te, mu1, mu2,
         'TabPFN_v35': _run_and_pack(
             run_tabpfn_v35, y_test,
             X_train, X_test, y_train, y_test, random_state=i+g_seed),
-        'Mitra-V2': _run_and_pack(
-            run_mitra_v2, y_test,
+        'EXAONE': _run_and_pack(
+            run_exaone, y_test,
             X_train, X_test, y_train, y_test, random_state=i+g_seed),
-        'TabFM': _run_and_pack(
-            run_tabfm, y_test,
-            X_train, X_test, y_train, y_test, random_state=i+g_seed),
+        'TabICL-V2': _run_and_pack(
+            run_tabicl, y_test,
+            X_train, X_test, y_train, y_test, random_state=i+g_seed)
     }
 
 

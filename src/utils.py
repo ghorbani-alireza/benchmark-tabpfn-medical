@@ -1,36 +1,41 @@
-import os
+import os, sys
+import numpy as np
+import glob, re
 import logging
-import sys
-import re
 from contextlib import contextmanager
 import warnings
-import gc
-import numpy as np
 import pandas as pd
+import json
 from sklearn.exceptions import ConvergenceWarning
 
 from . import config
 
-
-# fix multiple DataFrames at once
-def fix_all_errors_datasets(*dataframes):
-    return tuple(fix_list_columns(df.copy()) for df in dataframes)
-
-
 # string lists into python lists
+def _parse_array(s):
+    """'[0.1 0.2 0.3]' or '[0.1, 0.2, 0.3]' → np.array([0.1, 0.2, 0.3])."""
+    if not isinstance(s, str):
+        return s                      # already an array/list
+    s = s.strip().strip('[]')
+    if not s:
+        return np.array([])
+    return np.fromstring(s.replace(',', ' '), sep=' ')
+
+
 def fix_list_columns(df):
+    """Parse FPR / TPR / Probas / y_test_all columns from strings to arrays."""
+    list_keys = ('_FPR', '_TPR', '_Probas', 'y_test_all')
     for col in df.columns:
-        # columns wuth list‑like data
-        if any(key in col for key in ['_FPR', '_TPR', '_Probas', 'y_test_all']):
-            def convert(cell):
-                # only on strings
-                if isinstance(cell, str):
-                    cell_fixed = re.sub(r'(\d+\.?\d*)\s+', r'\1,', cell.strip())
-                    # remove trailing comma
-                    cell_fixed = cell_fixed.rstrip(',')
-                return cell
-            df[col] = df[col].apply(convert)
+        if any(k in col for k in list_keys):
+            df[col] = df[col].apply(_parse_array)
     return df
+
+    
+def load_fixed(files):
+    out = {}
+    for sid, path in files.items():
+        df = pd.read_csv(path)
+        out[sid] = fix_list_columns(df)
+    return out
 
 #################################################################################
 
@@ -49,132 +54,54 @@ def make_real_metadata(dataset_name, n, iter):
             f"iterations={iter}")
 
 
-#################################################################################
-
-# Summary Table
-def create_summary(errors, setting_name="", metadata=None):
-
-    methods = ['L-SLR', 'SLR', 'RandomForest', 'XGBoost', 'CatBoost',
-           'TabPFN_25', 'TabPFN_v26', 'TabPFN_v3', 'TabPFN_v35',
-           'Mitra-V2', 'TabFM']
-
-    summary_dict = {}
-
-    for method in methods:
-        method_data = {}
-
-        # AUC
-        auc_key = f"{method}_AUC"
-        if auc_key in errors and errors[auc_key]:
-            method_data['AUC_Mean'] = np.mean(errors[auc_key])
-            method_data['AUC_Std'] = np.std(errors[auc_key])
-        else:
-            method_data['AUC_Mean'] = np.nan
-            method_data['AUC_Std'] = np.nan
-
-        # MSE
-        mse_key = f"{method}_MSE"
-        if mse_key in errors and errors[mse_key]:
-            method_data['MSE_Mean'] = np.mean(errors[mse_key])
-            method_data['MSE_Std'] = np.std(errors[mse_key])
-        else:
-            method_data['MSE_Mean'] = np.nan
-            method_data['MSE_Std'] = np.nan
-
-        # Time
-        time_key = f"{method}_Time"
-        if time_key in errors and errors[time_key]:
-            method_data['Time_Mean'] = np.mean(errors[time_key])
-            method_data['Time_Std'] = np.std(errors[time_key])
-        else:
-            method_data['Time_Mean'] = np.nan
-            method_data['Time_Std'] = np.nan
-
-        summary_dict[method] = method_data
-    summary_df = pd.DataFrame(summary_dict).T
-    summary_df.attrs['metadata'] = metadata
-    summary_df = summary_df.sort_values('AUC_Mean', ascending=False) # sort by auc
-
-    return summary_df
 
 
 #################################################################################
 
-# function to save simulation
-def save_simulation_outputs(errors, captured_warnings, setting_name, n, mu, dist, iter_,
-                            errors_filename=None, summary_filename=None, warnings_filename=None):
+# function to save outputs
+import json
+import os
+import pandas as pd
 
-    # default filenames
-    if errors_filename is None:
-        errors_filename = f"{setting_name.lower().replace(' ', '_')}_errors.csv"
-    if summary_filename is None:
-        summary_filename = f"{setting_name.lower().replace(' ', '_')}_summary.csv"
-    if warnings_filename is None:
-        warnings_filename = f"{setting_name.lower().replace(' ', '_')}_warnings.csv"
+from . import config
 
 
-    # errors
-    errors_copy = errors.copy()
-    errors_df = pd.DataFrame(errors_copy)
-    errors_df.to_csv(config.SIM_RESULTS_PATH + errors_filename, index=True)
-    print(f"✓ Errors saved to {errors_filename}")
+def save_outputs(errors, name, output_dir=None, meta=None):
+    """Save a result dict as <name>.csv plus <name>.meta.json.
+    """
+    if output_dir is None:
+        output_dir = config.SIM_RESULTS_PATH
+    os.makedirs(output_dir, exist_ok=True)
 
-    # free memory
-    del errors_copy
-    del errors_df
-    gc.collect()
+    # ── main data ──
+    csv_path = os.path.join(output_dir, f"{name}.csv")
+    pd.DataFrame(errors).to_csv(csv_path, index=False)
+    print(f"✓ Saved {csv_path}")
 
-    # warnings if any
-    if captured_warnings:
-        warnings_df = pd.DataFrame(captured_warnings)
-        warnings_df.to_csv(config.SIM_RESULTS_PATH + warnings_filename, index=True)
-        print(f"✓ Warnings saved to {warnings_filename} (total: {len(captured_warnings)})")
-        del warnings_df
-    else:
-        print(f"✓ No warnings were captured")
+    # ── sidecar metadata ──
+    if meta is not None:
+        meta_path = os.path.join(output_dir, f"{name}.meta.json")
 
-    # summary
-    summary_df = create_summary(errors, setting_name,
-                                metadata=make_metadata(n, mu, dist, iter_))
-    summary_df.to_csv(config.SIM_RESULTS_PATH + summary_filename, index=True)
-    print(f"✓ Summary saved to {summary_filename}")
+        def _to_jsonable(v):
+            import numpy as np
+            if isinstance(v, np.ndarray):
+                return v.tolist()
+            if isinstance(v, (np.integer, np.floating)):
+                return v.item()
+            return v
 
-    # memory
-    del summary_df
-    del errors
-    gc.collect()
+        def _clean(d):
+            if isinstance(d, dict):
+                return {k: _clean(v) for k, v in d.items()}
+            if isinstance(d, (list, tuple)):
+                return [_clean(x) for x in d]
+            return _to_jsonable(d)
 
-#################################################################################
+        with open(meta_path, "w") as f:
+            json.dump(_clean(meta), f, indent=2)
+        print(f"✓ Saved {meta_path}")
 
-
-# save real data outputs - the same as above
-def save_real_data_outputs(errors, dataset_name, n, iter_,
-                           errors_filename=None, summary_filename=None, warnings_filename=None):
-
-    if errors_filename is None:
-        errors_filename = f"{dataset_name.lower().replace(' ', '_')}_errors.csv"
-    if summary_filename is None:
-        summary_filename = f"{dataset_name.lower().replace(' ', '_')}_summary.csv"
-    if warnings_filename is None:
-        warnings_filename = f"{dataset_name.lower().replace(' ', '_')}_warnings.csv"
-
-    # errors
-    errors_copy = errors.copy()
-    errors_df = pd.DataFrame(errors_copy)
-    errors_df.to_csv(config.REAL_RESULTS_PATH + errors_filename, index=True)
-    print(f"✓ Errors saved to {errors_filename}")
-
-    del errors_copy, errors_df
-    gc.collect()
-
-    # summary
-    metadata = make_real_metadata(dataset_name, n, iter_)
-    summary_df = create_summary(errors, setting_name=dataset_name, metadata=metadata)
-    summary_df.to_csv(config.REAL_RESULTS_PATH + summary_filename, index=True)
-    print(f"✓ Summary saved to {summary_filename}")
-
-    del summary_df, errors
-    gc.collect()
+    return csv_path
 
 
 #################################################################################
@@ -233,3 +160,49 @@ warnings.filterwarnings('ignore', category=ConvergenceWarning)
 
 # tabpfn logging output
 logging.getLogger('tabpfn').setLevel(logging.ERROR)
+
+#################################################################################
+#finding and reading saved results
+def _natural_key(name):
+    return [int(t) if t.isdigit() else t
+            for t in re.split(r'(\d+)', name)]
+
+
+def discover_sim(sim_dir, variant='baseline'):
+    pattern = ('simulation_setting*_sensitivity.csv' if variant == 'sensitivity'
+               else 'simulation_setting*.csv')
+    full = os.path.join(glob.escape(sim_dir), pattern)
+    files = sorted(glob.glob(full),
+                   key=lambda p: _natural_key(os.path.basename(p)))
+
+    out = {}
+    for f in files:
+        base = os.path.basename(f).replace('.csv', '')
+        if variant == 'baseline' and base.endswith('_sensitivity'):
+            continue
+        sid = base.replace('simulation_setting', '').replace('_sensitivity', '')
+        out[f'S{sid}'] = f
+    return out
+
+
+def discover_real(real_dir):
+    full = os.path.join(glob.escape(real_dir), 'realdata_*.csv')
+    files = sorted(glob.glob(full),
+                   key=lambda p: _natural_key(os.path.basename(p)))
+    return {f'D{i}': f for i, f in enumerate(files, 1)}
+
+def read_labels(files):
+    """{sid: path} → {sid: label} from .meta.json. Falls back to sid."""
+    import json
+    out = {}
+    for sid, path in files.items():
+        meta_path = path.replace('.csv', '.meta.json')
+        label = sid
+        if os.path.exists(meta_path):
+            with open(meta_path) as fh:
+                m = json.load(fh)
+            label = m.get('label') or m.get('dataset') or sid
+        out[sid] = label
+    return out
+    
+    

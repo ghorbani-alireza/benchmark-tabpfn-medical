@@ -1,192 +1,112 @@
 import os
+import numpy as np
 import pandas as pd
 
-from .config import (
-    TABLES_PATH
-)
+from .config import TABLES_PATH
 
-#  one table, all metrics
-def build_combined_table(summary_dfs, setting_names, filename,
-                         metrics=None, errors_list=None, error_metrics=None):
-    if metrics is None:
-        metrics = ['AUC', 'MSE', 'Time']
-    if error_metrics is None:
-        error_metrics = []
-    methods = ['L-SLR', 'SLR', 'RandomForest', 'XGBoost', 'CatBoost', 'TabPFN_25',
-               'TabPFN_v26', 'TabPFN_v3', 'TabPFN_v35', 'Mitra-V2', 'TabFM']
+METHODS = ['L-SLR', 'SLR', 'RandomForest', 'XGBoost', 'CatBoost',
+           'TabPFN_v25', 'TabPFN_v26', 'TabPFN_v3', 'TabPFN_v35',
+           'EXAONE', 'TabICL-V2']
+
+# Scalar metrics only. FPR/TPR/Probas are list-valued — used by plots.
+METRICS = ['AUC', 'MSE', 'Brier', 'Time', 'CalSlope', 'CalIntercept']
+
+HIGHER_IS_BETTER = {'AUC'}
+
+
+def build_measures_table(errors_dict, metrics=None, filename='table.csv',
+                         methods=None, tables_dir=None):
+    """rows=(Setting, Metric), cols=method, values='mean ± std'.
+
+    errors_dict : {setting_id: pd.DataFrame}
+    """
+    if not errors_dict:
+        print(f"⚠️ no data to build {filename} — skipping")
+        return None
+    
+    metrics = metrics or METRICS
+    methods = methods or METHODS
+    tables_dir = tables_dir or TABLES_PATH
+
     rows = []
-
-    for setting, df, err_df in zip(setting_names, summary_dfs, errors_list):
+    for sid, df in errors_dict.items():
         for metric in metrics:
-            row = {'Setting': setting, 'Metric': metric}
-            if metric in error_metrics:
-                # Read from errors_list
-                for m in methods:
-                    col = f'{m}_{metric}'
-                    if col not in err_df.columns:
-                        raise KeyError(f"Column '{col}' not found in errors_list for setting {setting}")
-                    vals = err_df[col]
-                    row[m] = f"{vals.mean():.3f} ± {vals.std():.3f}"
-            else:
-                mean_col = f"{metric}_Mean"
-                std_col  = f"{metric}_Std"
-                if mean_col not in df.columns:
-                    mean_col = f"{metric} Mean"
-                    std_col  = f"{metric} Std"
-                for m in methods:
-                    mean_val = df.loc[m, mean_col]
-                    std_val  = df.loc[m, std_col]
-                    row[m] = f"{mean_val:.3f} ± {std_val:.3f}"
-            rows.append(row)
-
-    table_df = pd.DataFrame(rows)
-    table_df.set_index(['Setting', 'Metric'], inplace=True)
-
-
-    csv_path = os.path.join(TABLES_PATH, filename)
-    table_df.to_csv(csv_path)
-    print(f"✓ Saved combined table to {csv_path}")
-
-    def style_row(row):
-        metric = row.name[1]
-        num_vals = {}
-        for col in row.index:
-            try:
-                num = float(row[col].split(' ± ')[0])
-                num_vals[col] = num
-            except:
-                num_vals[col] = None
-        if not any(num_vals.values()):
-            return [''] * len(row)
-        reverse = (metric == 'AUC')
-        sorted_cols = sorted(num_vals.items(), key=lambda x: x[1], reverse=reverse)
-        best = sorted_cols[0][0]
-        second = sorted_cols[1][0] if len(sorted_cols) > 1 else None
-        styles = []
-        for col in row.index:
-            if col == best:
-                styles.append('text-decoration: underline')
-            elif second is not None and col == second:
-                styles.append('text-decoration: underline double')
-            else:
-                styles.append('')
-        return styles
-
-    return table_df.style.apply(style_row, axis=1)
-
-
-################################################################################
-
-# sensitivity gain table
-def build_gain_table(base_dfs, sens_dfs, setting_names, filename, metric='AUC_Mean'):
-    methods = ['L-SLR', 'SLR', 'RandomForest', 'XGBoost', 'CatBoost','TabPFN_v25', 
-               'TabPFN_v26', 'TabPFN_v3', 'TabPFN_v35', 'TabFM']
-    gain_data = []
-    for base_df, sens_df, name in zip(base_dfs, sens_dfs, setting_names):
-        delta = sens_df.loc[methods, metric] - base_df.loc[methods, metric]
-        gain_data.append(delta)
-    gain_df = pd.DataFrame(gain_data, index=setting_names, columns=methods)
-    gain_df.index.name = 'Setting'
-
-    csv_path = os.path.join(TABLES_PATH, filename)
-    gain_df.to_csv(csv_path)
-    print(f"✓ Saved gain table to {csv_path}")
-
-    def highlight_gain(row):
-        sorted_vals = row.sort_values(ascending=False)
-        largest = sorted_vals.iloc[0]
-        second = sorted_vals.iloc[1] if len(sorted_vals) > 1 else None
-        return [
-            'text-decoration: underline' if val == largest else
-            'text-decoration: underline double' if second is not None and val == second else ''
-            for val in row
-        ]
-
-    styled = gain_df.style.apply(highlight_gain, axis=1).format(lambda x: f"{x:+.3f}")
-    return styled
-
-
-################################################################################
-
-#  table for sensitivity analysis
-def build_auc_brier_table(summary_dfs, errors_list, setting_names, filename, error_metrics=None):
-    if error_metrics is None:
-        error_metrics = ['Brier']
-
-    methods = ['L-SLR', 'SLR', 'RandomForest', 'XGBoost', 'CatBoost','TabPFN_v25', 
-               'TabPFN_v26', 'TabPFN_v3', 'TabPFN_v35', 'TabFM']
-    rows = []
-
-
-    for metric in error_metrics:
-        for name, err_df in zip(setting_names, errors_list):
-            row_dict = {}
+            row = {'Setting': sid, 'Metric': metric}
             for m in methods:
                 col = f'{m}_{metric}'
-                if col not in err_df.columns:
-                    raise KeyError(f"Column '{col}' missing for setting {name}")
-                vals = err_df[col]
-                row_dict[m] = f"{vals.mean():.3f} ± {vals.std():.3f}"
-            rows.append((name, metric, row_dict))
+                if col in df.columns:
+                    v = pd.to_numeric(df[col], errors='coerce').dropna()
+                    row[m] = f"{v.mean():.3f} ± {v.std():.3f}" if len(v) else '—'
+                else:
+                    row[m] = '—'
+            rows.append(row)
+
+    table = pd.DataFrame(rows).set_index(['Setting', 'Metric'])
+    table.to_csv(os.path.join(tables_dir, filename))
+    print(f"✓ {filename}")
+    return table.style.apply(_style_best, axis=1)
 
 
-    for name, df in zip(setting_names, summary_dfs):
-        auc_dict = {}
-        # Find correct column names
-        mean_col = 'AUC_Mean' if 'AUC_Mean' in df.columns else 'AUC Mean'
-        std_col  = 'AUC_Std'  if 'AUC_Std'  in df.columns else 'AUC Std'
-        if mean_col not in df.columns or std_col not in df.columns:
-            raise KeyError(f"AUC columns missing in summary for {name}")
+def build_gain_table(base_dict, sens_dict, metric='AUC',
+                     filename='gains.csv', methods=None, tables_dir=None):
+    """Sensitivity mean − baseline mean, per (setting, method)."""
+    methods = methods or METHODS
+    tables_dir = tables_dir or TABLES_PATH
+    
+    if not base_dict or not sens_dict:
+        print(f"⚠️ empty input for {filename} — skipping")
+        return None
+
+    common = [s for s in base_dict if s in sens_dict]
+
+    rows = []
+    for sid in common:
+        row = {'Setting': sid}
+        b, s = base_dict[sid], sens_dict[sid]
         for m in methods:
-            auc_dict[m] = f"{df.loc[m, mean_col]:.3f} ± {df.loc[m, std_col]:.3f}"
-        rows.append((name, 'ROC-AUC', auc_dict))
+            col = f'{m}_{metric}'
+            bv = (pd.to_numeric(b[col], errors='coerce').dropna().mean()
+                  if col in b.columns else np.nan)
+            sv = (pd.to_numeric(s[col], errors='coerce').dropna().mean()
+                  if col in s.columns else np.nan)
+            row[m] = sv - bv
+        rows.append(row)
+
+    table = pd.DataFrame(rows).set_index('Setting')
+    table.to_csv(os.path.join(tables_dir, filename))
+    print(f"✓ {filename}")
+    return table.style.apply(_style_gain, axis=1).format(lambda x: f"{x:+.3f}")
 
 
-    index_tuples = []
-    data = []
-    for name in setting_names:
-        # AUC first
-        auc_row = next(r[2] for r in rows if r[0] == name and r[1] == 'ROC-AUC')
-        index_tuples.append((name, 'ROC-AUC'))
-        data.append([auc_row[m] for m in methods])
-        # Then each error metric in the given order
-        for metric in error_metrics:
-            err_row = next(r[2] for r in rows if r[0] == name and r[1] == metric)
-            index_tuples.append((name, metric))
-            data.append([err_row[m] for m in methods])
+def _style_best(row):
+    metric = row.name[1]
+    reverse = metric in HIGHER_IS_BETTER
+    vals = {}
+    for col in row.index:
+        try:
+            vals[col] = float(row[col].split(' ± ')[0])
+        except Exception:
+            pass
+    if not vals:
+        return [''] * len(row)
+    ordered = sorted(vals.items(), key=lambda kv: kv[1], reverse=reverse)
+    best = ordered[0][0]
+    second = ordered[1][0] if len(ordered) > 1 else None
+    return [
+        'text-decoration: underline' if c == best
+        else 'text-decoration: underline double' if c == second
+        else ''
+        for c in row.index
+    ]
 
-    index = pd.MultiIndex.from_tuples(index_tuples, names=['Setting', 'Metric'])
-    combined = pd.DataFrame(data, index=index, columns=methods)
 
-
-    csv_path = os.path.join(TABLES_PATH, filename)
-    combined.to_csv(csv_path)
-    print(f"✓ Saved table to {csv_path}")
-
-    # Styling
-    def highlight(row):
-        metric = row.name[1]
-        num_vals = {}
-        for col in row.index:
-            try:
-                num = float(row[col].split(' ± ')[0])
-                num_vals[col] = num
-            except:
-                num_vals[col] = None
-        if not any(num_vals.values()):
-            return [''] * len(row)
-        reverse = (metric == 'ROC-AUC')
-        sorted_items = sorted(num_vals.items(), key=lambda x: x[1], reverse=reverse)
-        best = sorted_items[0][0]
-        second = sorted_items[1][0] if len(sorted_items) > 1 else None
-        styles = []
-        for col in row.index:
-            if col == best:
-                styles.append('text-decoration: underline')
-            elif second is not None and col == second:
-                styles.append('text-decoration: underline double')
-            else:
-                styles.append('')
-        return styles
-
-    return combined.style.apply(highlight, axis=1)
+def _style_gain(row):
+    ordered = row.sort_values(ascending=False)
+    top = ordered.iloc[0]
+    second = ordered.iloc[1] if len(ordered) > 1 else None
+    return [
+        'text-decoration: underline' if v == top
+        else 'text-decoration: underline double' if second is not None and v == second
+        else ''
+        for v in row
+    ]

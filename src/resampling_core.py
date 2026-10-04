@@ -19,8 +19,8 @@ from .model_definitions import (
     run_tabpfn_v26,
     run_tabpfn_v3,
     run_tabpfn_v35,
-    run_mitra_v2,
-    run_tabfm
+    run_exaone,
+    run_tabicl
 )
 
 
@@ -94,7 +94,7 @@ def _single_real_iteration(i, X_np, y_np, idx0, idx1,
         X_train, X_test, y_train, y_test,
         X_train_sub, y_train_sub, X_val, y_val,
         random_state=i+g_seed),
-    'TabPFN_25': _run_and_pack(
+    'TabPFN_v25': _run_and_pack(
         run_tabpfn_v25, y_test,
         X_train, X_test, y_train, y_test, random_state=i+g_seed),
     'TabPFN_v26': _run_and_pack(
@@ -106,12 +106,12 @@ def _single_real_iteration(i, X_np, y_np, idx0, idx1,
     'TabPFN_v35': _run_and_pack(
         run_tabpfn_v35, y_test,
         X_train, X_test, y_train, y_test, random_state=i+g_seed),
-    'Mitra-V2': _run_and_pack(
-        run_mitra_v2, y_test,
+    'EXAONE': _run_and_pack(
+        run_exaone, y_test,
         X_train, X_test, y_train, y_test, random_state=i+g_seed),
-    'TabFM': _run_and_pack(
-        run_tabfm, y_test,
-        X_train, X_test, y_train, y_test, random_state=i+g_seed),
+    'TabICL-V2': _run_and_pack(
+        run_tabicl, y_test,
+        X_train, X_test, y_train, y_test, random_state=i+g_seed)
 }
 
 
@@ -149,18 +149,18 @@ def evaluate_on_real_data(X, y, n, iter=100, g_seed = 2025):
         'XGBoost_Brier': [], 'XGBoost_CalSlope': [], 'XGBoost_CalIntercept': [], 'XGBoost_Probas': [],
         'CatBoost_MSE': [], 'CatBoost_AUC': [], 'CatBoost_Time': [], 'CatBoost_FPR': [], 'CatBoost_TPR': [],
         'CatBoost_Brier': [], 'CatBoost_CalSlope': [], 'CatBoost_CalIntercept': [], 'CatBoost_Probas': [],
-        'TabPFN_25_MSE': [], 'TabPFN_25_AUC': [], 'TabPFN_25_Time': [], 'TabPFN_25_FPR': [], 'TabPFN_25_TPR': [],
-        'TabPFN_25_Brier': [], 'TabPFN_25_CalSlope': [], 'TabPFN_25_CalIntercept': [], 'TabPFN_25_Probas': [],
+        'TabPFN_v25_MSE': [], 'TabPFN_v25_AUC': [], 'TabPFN_v25_Time': [], 'TabPFN_v25_FPR': [], 'TabPFN_v25_TPR': [],
+        'TabPFN_v25_Brier': [], 'TabPFN_v25_CalSlope': [], 'TabPFN_v25_CalIntercept': [], 'TabPFN_v25_Probas': [],
         'TabPFN_v26_MSE': [], 'TabPFN_v26_AUC': [], 'TabPFN_v26_Time': [], 'TabPFN_v26_FPR': [], 'TabPFN_v26_TPR': [],
         'TabPFN_v26_Brier': [], 'TabPFN_v26_CalSlope': [], 'TabPFN_v26_CalIntercept': [], 'TabPFN_v26_Probas': [],
         'TabPFN_v3_MSE': [], 'TabPFN_v3_AUC': [], 'TabPFN_v3_Time': [], 'TabPFN_v3_FPR': [], 'TabPFN_v3_TPR': [],
         'TabPFN_v3_Brier': [], 'TabPFN_v3_CalSlope': [], 'TabPFN_v3_CalIntercept': [], 'TabPFN_v3_Probas': [],
         'TabPFN_v35_MSE': [], 'TabPFN_v35_AUC': [], 'TabPFN_v35_Time': [], 'TabPFN_v35_FPR': [], 'TabPFN_v35_TPR': [],
         'TabPFN_v35_Brier': [], 'TabPFN_v35_CalSlope': [], 'TabPFN_v35_CalIntercept': [], 'TabPFN_v35_Probas': [],
-        'Mitra-V2_MSE': [], 'Mitra-V2_AUC': [], 'Mitra-V2_Time': [], 'Mitra-V2_FPR': [], 'Mitra-V2_TPR': [],
-        'Mitra-V2_Brier': [], 'Mitra-V2_CalSlope': [], 'Mitra-V2_CalIntercept': [], 'Mitra-V2_Probas': [],
-        'TabFM_MSE': [], 'TabFM_AUC': [], 'TabFM_Time': [], 'TabFM_FPR': [], 'TabFM_TPR': [],
-        'TabFM_Brier': [], 'TabFM_CalSlope': [], 'TabFM_CalIntercept': [], 'TabFM_Probas': [],
+        'EXAONE_MSE': [], 'EXAONE_AUC': [], 'EXAONE_Time': [], 'EXAONE_FPR': [], 'EXAONE_TPR': [],
+        'EXAONE_Brier': [], 'EXAONE_CalSlope': [], 'EXAONE_CalIntercept': [], 'EXAONE_Probas': [],
+        'TabICL-V2_MSE': [], 'TabICL-V2_AUC': [], 'TabICL-V2_Time': [], 'TabICL-V2_FPR': [], 'TabICL-V2_TPR': [],
+        'TabICL-V2_Brier': [], 'TabICL-V2_CalSlope': [], 'TabICL-V2_CalIntercept': [], 'TabICL-V2_Probas': [],
         'y_test_all': []
     }
 
@@ -184,12 +184,12 @@ def evaluate_on_real_data(X, y, n, iter=100, g_seed = 2025):
             ('RandomForest', 'RandomForest_'),
             ('XGBoost', 'XGBoost_'),
             ('CatBoost', 'CatBoost_'),
-            ('TabPFN_25', 'TabPFN_25_'),
+            ('TabPFN_v25', 'TabPFN_v25_'),
             ('TabPFN_v26', 'TabPFN_v26_'),
             ('TabPFN_v3', 'TabPFN_v3_'),
             ('TabPFN_v35', 'TabPFN_v35_'),
-            ('Mitra-V2', 'Mitra-V2_'),
-            ('TabFM', 'TabFM_')
+            ('EXAONE', 'EXAONE_'),
+            ('TabICL-V2', 'TabICL-V2_')
         ]:
             (t, mse, auc, fpr, tpr, proba, brier, slope, intercept) = res[key]
             errors[prefix + 'Time'].append(t)
