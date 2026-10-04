@@ -14,27 +14,27 @@ benchmark-tabpfn-medical/
 ├── README.md
 │
 ├── src/                                    # source code
-│   ├── __init__.py
-│   ├── config.py                           # paths (from __file__)
-│   ├── data_loader.py                      # real-data loaders
-│   ├── settings.py                         # synthetic simulation settings
-│   ├── model_definitions.py                # model runners
-│   ├── simulation_core.py                  # synthetic simulation loop
-│   ├── resampling_core.py                  # real-data resampling loop
-│   ├── utils.py                            # save/load/discover helpers
-│   ├── table_functions.py                  # summary tables
-│   ├── plot_functions.py                   # figures
-│   ├── setup_vendor.py                     # one-time: clone 4 TabPFN versions
-│   └── tokens.py                           # HF / PriorLabs tokens
+    ├── __init__.py
+    ├── config.py                           # paths (from __file__)
+    ├── data_loader.py                      # real-data loaders
+    ├── settings.py                         # synthetic simulation settings
+    ├── model_definitions.py                # model runners
+    ├── simulation_core.py                  # synthetic simulation loop
+    ├── resampling_core.py                  # real-data resampling loop
+    ├── utils.py                            # save/load/discover helpers
+    ├── table_functions.py                  # summary tables
+    ├── plot_functions.py                   # figures
+    ├── setup_vendor.py                     # one-time: clone 4 TabPFN versions
+    └── tokens.py                           # HF / PriorLabs tokens
 │
 ├── notebooks/                              # jupyter notebooks
-│   └── run_analysis.ipynb
+    └── run_analysis.ipynb
 │
 ├── vendor/                                 # vendored TabPFN packages
-│   ├── tabpfn_v25/
-│   ├── tabpfn_v26/
-│   ├── tabpfn_v3/
-│   └── tabpfn_v35/
+    ├── tabpfn_v25/
+    ├── tabpfn_v26/
+    ├── tabpfn_v3/
+    └── tabpfn_v35/
 │
 └── io/                                     # input/output
     ├── real_data/                          # place datasets here
