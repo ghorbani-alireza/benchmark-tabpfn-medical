@@ -38,9 +38,10 @@ benchmark-tabpfn-medical/
 │
 └── io/                                     # input/output
     ├── real_data/                          # place datasets here
-    │   ├── data1_echo_notes.pkl
-    │   ├── data2_blood_glucose_management.pkl
-    │   └── data3_blood_gas_oximetry.pkl
+        ├── data1_echo_notes.pkl
+        ├── data2_blood_glucose_management.pkl
+        ├── data2_blood_glucose_management.pkl
+    └── data3_blood_gas_oximetry.pkl
     ├── sim_results/                        # saved simulation outputs
     ├── real_data_results/                  # saved real-data outputs
     ├── tables/                             # generated tables
