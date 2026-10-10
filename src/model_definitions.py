@@ -78,6 +78,13 @@ print("TabICL package version:", version("tabicl"))
 
 # Linear Sparse Logistic Regression
 def run_linear_sparse_logistic_regression(X_train, X_test, y_train, y_test, X_train_sub, y_train_sub, X_val, y_val, random_state=None):
+    
+    # tuning 
+    scaler_tune = StandardScaler()
+    X_train_sub_scaled = scaler_tune.fit_transform(X_train_sub)
+    X_val_scaled = scaler_tune.transform(X_val)
+    
+    
     # model and tuning grid
     lr = LogisticRegression(
         penalty='l1',
@@ -94,16 +101,30 @@ def run_linear_sparse_logistic_regression(X_train, X_test, y_train, y_test, X_tr
         scoring='roc_auc',
         n_jobs=1
     )
-    grid_search.fit(np.vstack((X_train_sub, X_val)), np.hstack((y_train_sub, y_val)))
-    best_model = grid_search.best_estimator_
+    grid_search.fit(np.vstack((X_train_sub_scaled, X_val_scaled)), np.hstack((y_train_sub, y_val)))
     # page 276 ITSL book descibes GridSearchCV()
 
     # best model on full training data
-    best_model.fit(X_train, y_train)
+    best_params = grid_search.best_params_
 
-    # predict + compute metrics
-    pred = best_model.predict(X_test)
-    proba = best_model.predict_proba(X_test)[:, 1]
+    # ── final preprocessing: now fit on ALL training data ──
+    scaler_final = StandardScaler()
+    X_train_scaled = scaler_final.fit_transform(X_train)
+    X_test_scaled = scaler_final.transform(X_test)
+
+    best_model = LogisticRegression(
+        penalty="l1",
+        solver="liblinear",
+        max_iter=2000,
+        n_jobs=1,
+        random_state=random_state,
+        **best_params
+    )
+
+    best_model.fit(X_train_scaled, y_train)
+
+    pred = best_model.predict(X_test_scaled)
+    proba = best_model.predict_proba(X_test_scaled)[:, 1]
     fpr, tpr, _ = roc_curve(y_test, proba)
     brier = np.mean((proba - y_test) ** 2)
     return (
@@ -125,6 +146,11 @@ def run_linear_sparse_logistic_regression(X_train, X_test, y_train, y_test, X_tr
 # Sparse Logistic Regression on Augmented Feature Space
 def run_sparse_logistic_regression(X_train, X_test, y_train, y_test, X_train_sub, y_train_sub, X_val, y_val, random_state=None):
 
+    # scale features tuning 
+    scaler_tune = StandardScaler()
+    X_train_sub_scaled = scaler_tune.fit_transform(X_train_sub)
+    X_val_scaled = scaler_tune.transform(X_val)
+        
     # augment features Function
     def _augment_features(X):
         n, d = X.shape
@@ -132,11 +158,9 @@ def run_sparse_logistic_regression(X_train, X_test, y_train, y_test, X_train_sub
         xx = X[:, idx[0]] * X[:, idx[1]]  # element-wise multiplication
         return np.hstack((X, xx))
 
-    # augmentation first
-    Aug_X_train = _augment_features(X_train)
-    Aug_X_test = _augment_features(X_test)
-    Aug_X_train_sub = _augment_features(X_train_sub)
-    Aug_X_val = _augment_features(X_val)
+    # augmentation 
+    Aug_X_train_sub = _augment_features(X_train_sub_scaled)
+    Aug_X_val = _augment_features(X_val_scaled)
 
     # model and tuning grid
     lr = LogisticRegression(
@@ -155,9 +179,26 @@ def run_sparse_logistic_regression(X_train, X_test, y_train, y_test, X_train_sub
         n_jobs=1
     )
     grid_search.fit(np.vstack((Aug_X_train_sub, Aug_X_val)), np.hstack((y_train_sub, y_val)))
-    best_model = grid_search.best_estimator_
-
-    # best model
+    
+    # best model on full training data
+    best_params = grid_search.best_params_
+        
+    scaler_final = StandardScaler()
+    X_train_scaled = scaler_final.fit_transform(X_train)
+    X_test_scaled = scaler_final.transform(X_test)
+    
+    Aug_X_train = _augment_features(X_train_scaled)
+    Aug_X_test = _augment_features(X_test_scaled)
+    
+    best_model = LogisticRegression(
+        penalty="l1",
+        solver="liblinear",
+        max_iter=2000,
+        n_jobs=1,
+        random_state=random_state,
+        **best_params
+    )
+    
     best_model.fit(Aug_X_train, y_train)
 
     # predict
@@ -183,8 +224,8 @@ def run_random_forest(X_train, X_test, y_train, y_test, X_train_sub, y_train_sub
 
     # model and tuning grid
     rf = RandomForestClassifier(
-        n_estimators=100, # number of decision trees
-        max_depth=5, #important for overfiitng
+        #n_estimators=100, # number of decision trees
+        #max_depth=5, #important for overfiitng
         n_jobs=1,
         random_state=random_state
     ) # consistent with XGBoost and CatBoost also
@@ -198,9 +239,15 @@ def run_random_forest(X_train, X_test, y_train, y_test, X_train_sub, y_train_sub
         n_jobs=1
     )
     grid_search.fit(np.vstack((X_train_sub, X_val)), np.hstack((y_train_sub, y_val)))
-    best_model = grid_search.best_estimator_
+    best_params = grid_search.best_params_
 
-    # train best model on full train
+    # fresh final model fitted on all training data
+    best_model = RandomForestClassifier(
+        n_jobs=1,
+        random_state=random_state,
+        **best_params
+    )
+
     best_model.fit(X_train, y_train)
 
     # predict and compute metrics
@@ -224,11 +271,11 @@ def run_random_forest(X_train, X_test, y_train, y_test, X_train_sub, y_train_sub
 
 # XGBoost
 def run_xgboost(X_train, X_test, y_train, y_test, X_train_sub, y_train_sub, X_val, y_val, random_state=None):
-
+    
     # Define model and tuning grid
     xgb = XGBClassifier(
-        n_estimators=100,
-        max_depth=6,
+        #n_estimators=100,
+        #max_depth=6,
         learning_rate=0.1,
         eval_metric='logloss',
         tree_method='hist',
@@ -244,9 +291,18 @@ def run_xgboost(X_train, X_test, y_train, y_test, X_train_sub, y_train_sub, X_va
         n_jobs=1
     )
     grid_search.fit(np.vstack((X_train_sub, X_val)), np.hstack((y_train_sub, y_val)))
-    best_model = grid_search.best_estimator_
+    best_params = grid_search.best_params_
 
-    # best model on full train data
+    # fresh final model fitted on all training data
+    best_model = XGBClassifier(
+        learning_rate=0.1,
+        eval_metric="logloss",
+        tree_method="hist",
+        n_jobs=1,
+        random_state=random_state,
+        **best_params
+    )
+
     best_model.fit(X_train, y_train)
 
     # predict and compute metrics
@@ -270,10 +326,11 @@ def run_xgboost(X_train, X_test, y_train, y_test, X_train_sub, y_train_sub, X_va
 
 # CatBoost
 def run_catboost(X_train, X_test, y_train, y_test, X_train_sub, y_train_sub, X_val, y_val, random_state=None):
+ 
     #  model and tuning grid
     cb = CatBoostClassifier(
-        iterations=100,
-        depth=6,
+        #iterations=100,
+        #depth=6,
         learning_rate=0.1,
         thread_count=1, # like n_job
         verbose=0,
@@ -288,9 +345,89 @@ def run_catboost(X_train, X_test, y_train, y_test, X_train_sub, y_train_sub, X_v
         n_jobs=1
     )
     grid_search.fit(np.vstack((X_train_sub, X_val)), np.hstack((y_train_sub, y_val)))
-    best_model = grid_search.best_estimator_
+    best_params = grid_search.best_params_
 
-    # train best model
+    # fresh final model fitted on all training data
+    best_model = XGBClassifier(
+        learning_rate=0.1,
+        eval_metric="logloss",
+        tree_method="hist",
+        n_jobs=1,
+        random_state=random_state,
+        **best_params
+    )
+
+    best_model.fit(X_train, y_train)
+
+    pred = best_model.predict(X_test)
+    proba = best_model.predict_proba(X_test)[:, 1]
+
+    fpr, tpr, _ = roc_curve(y_test, proba)
+    brier = np.mean((proba - y_test) ** 2)
+
+    return (
+        balanced_accuracy_score(y_test, pred),
+        roc_auc_score(y_test, proba),
+        mean_squared_error(y_test, pred),
+        fpr,
+        tpr,
+        proba,
+        brier
+    )
+
+
+################################################################################
+
+
+# CatBoost
+def run_catboost(
+    X_train, X_test, y_train, y_test,
+    X_train_sub, y_train_sub, X_val, y_val,
+    random_state=None
+):
+    # model used for tuning
+    cb = CatBoostClassifier(
+        learning_rate=0.1,
+        thread_count=1,
+        verbose=0,
+        random_seed=random_state
+    )
+
+    param_grid = {
+        "iterations": [50, 100, 200],
+        "depth": [3, 5, 6]
+    }
+
+    grid_search = GridSearchCV(
+        cb,
+        param_grid,
+        cv=[(
+            np.arange(len(X_train_sub)),
+            np.arange(
+                len(X_train_sub),
+                len(X_train_sub) + len(X_val)
+            )
+        )],
+        scoring="roc_auc",
+        n_jobs=1
+    )
+
+    grid_search.fit(
+        np.vstack((X_train_sub, X_val)),
+        np.hstack((y_train_sub, y_val))
+    )
+
+    best_params = grid_search.best_params_
+
+    # fresh final model fitted on all training data
+    best_model = CatBoostClassifier(
+        learning_rate=0.1,
+        thread_count=1,
+        verbose=0,
+        random_seed=random_state,
+        **best_params
+    )
+
     best_model.fit(X_train, y_train)
 
     # predict/ compute metrics
@@ -313,20 +450,19 @@ def run_catboost(X_train, X_test, y_train, y_test, X_train_sub, y_train_sub, X_v
 
 # TabPFN
 # Generic runner to use for all TabPFN versions  
-def _run_tabpfn_generic(X_train, X_test, y_train, y_test, model_class, model_kwargs, random_state):
+def _run_tabpfn_generic(X_train, X_test, y_train, y_test, model_class, random_state):
     
-    # scale features
-    scaler = StandardScaler()
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_test_scaled = scaler.transform(X_test)
 
-    model = model_class(**model_kwargs, 
-                        ignore_pretraining_limits=True,
-                        random_state=random_state
-                        )
-    model.fit(X_train_scaled, y_train)
-    pred = model.predict(X_test_scaled)
-    proba = model.predict_proba(X_test_scaled)[:, 1]
+    model = model_class(
+        device="cpu",
+        ignore_pretraining_limits=True,
+        random_state=random_state,
+        n_preprocessing_jobs=1,
+    )
+    
+    model.fit(X_train, y_train)
+    pred = model.predict(X_test)
+    proba = model.predict_proba(X_test)[:, 1]
     fpr, tpr, _ = roc_curve(y_test, proba)
     brier = np.mean((proba - y_test) ** 2)
     return (
@@ -342,7 +478,6 @@ def run_tabpfn_v25(X_train, X_test, y_train, y_test, random_state=None):
     return _run_tabpfn_generic(
         X_train, X_test, y_train, y_test,
         TabPFNClassifier_v25,
-        {"n_estimators": 1, "device": "cpu", "n_preprocessing_jobs": 1},
         random_state
     )
 
@@ -350,7 +485,6 @@ def run_tabpfn_v26(X_train, X_test, y_train, y_test, random_state=None):
     return _run_tabpfn_generic(
         X_train, X_test, y_train, y_test,
         TabPFNClassifier_v26,
-         {"n_estimators": 1, "device": "cpu", "n_preprocessing_jobs": 1},
         random_state
     )
 
@@ -358,7 +492,6 @@ def run_tabpfn_v3(X_train, X_test, y_train, y_test, random_state=None):
     return _run_tabpfn_generic(
         X_train, X_test, y_train, y_test,
         TabPFNClassifier_v3,
-        {"n_estimators": 1, "device": "cpu", "n_preprocessing_jobs": 1},
         random_state
     )
 
@@ -366,7 +499,6 @@ def run_tabpfn_v35(X_train, X_test, y_train, y_test, random_state=None):
     return _run_tabpfn_generic(
         X_train, X_test, y_train, y_test,
         TabPFNClassifier_v35,
-        {"n_estimators": 1, "device": "cpu", "n_preprocessing_jobs": 1},
         random_state
     )
     
@@ -375,7 +507,8 @@ def run_tabpfn_v35(X_train, X_test, y_train, y_test, random_state=None):
 ################################################################################
 # EXAONE
 def run_exaone(X_train, X_test, y_train, y_test, random_state=None):
-    clf = EXAONETabularClassifier.from_pretrained(device="cpu")
+
+    clf = EXAONETabularClassifier.from_pretrained(device="cpu", seed = random_state)
     clf.fit(X_train, y_train)
     pred = clf.predict(X_test)
     proba = clf.predict_proba(X_test)[:, 1]
@@ -393,10 +526,8 @@ def run_exaone(X_train, X_test, y_train, y_test, random_state=None):
     ################################################################################
 # TabICLv2
 def run_tabicl(X_train, X_test, y_train, y_test, random_state=None):
-    clf = TabICLClassifier(
-        device="cpu",
-        random_state=random_state if random_state is not None else 42,
-    )
+
+    clf = TabICLClassifier(device="cpu", random_state=random_state)
     clf.fit(X_train, y_train)
     pred = clf.predict(X_test)
     proba = clf.predict_proba(X_test)[:, 1]

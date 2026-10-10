@@ -165,7 +165,7 @@ def evaluate_on_real_data(X, y, n, iter=100, g_seed = 2025):
     }
 
     # parallel - cahnge n_job for ibe
-    results = Parallel(n_jobs=10, prefer="threads", verbose=0)(
+    results = Parallel(n_jobs=20, prefer="threads", verbose=0)(
         delayed(_single_real_iteration)(
             i, X_np, y_np, idx0, idx1,
             n1_tr, n2_tr, n1_te, n2_te, g_seed

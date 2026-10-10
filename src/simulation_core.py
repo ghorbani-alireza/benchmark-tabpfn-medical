@@ -237,7 +237,7 @@ def evaluate_on_sim_data(n, mu, sigma1, sigma2, df=None, dist="Normal", iter=100
     
     
     # parallel - cahnge n_job for ibe
-    results = Parallel(n_jobs=10, prefer="threads", verbose=0)(
+    results = Parallel(n_jobs=20, prefer="threads", verbose=0)(
         delayed(_single_sim_iteration)(
             i, n1_tr, n2_tr, n1_te, n2_te, mu1, mu2, sigma1, sigma2, df, dist, g_seed)
         for i in tqdm(range(iter), desc="Real‑data resampling", leave=True)
