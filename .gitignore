@@ -1,0 +1,23 @@
+# Python environments, builds, and caches
+
+
+# Credentials
+.secrets/
+token.py
+
+
+# Plots and raw data
+/io/plots/
+
+/io/real_data/
+data1_echo_notes.pkl
+
+/io/real_data/
+data2_blood_glucose_management.pkl
+
+/io/real_data/
+data3_blood_gas_oximetry.pkl
+
+
+# when using uv sync it will create .venv and install project dependencies
+.venv/
