@@ -110,6 +110,131 @@ and a runtime bar chart. The notebook also retains its main results section for
 existing baseline, sensitivity, and real-data files. Keep `SHOW_MAIN_RESULTS = True`
 to display them while `RUN_FULL_ANALYSIS = False` prevents model execution.
 
+## Troubleshooting on a server or network filesystem
+
+Use the normal setup above first. The fixes below are only needed when the
+corresponding error appears. Open a terminal in your actual project directory;
+the path may differ between computers. No administrator access is needed for
+these fixes.
+
+### `uv: command not found`
+
+If uv is not installed, use the [official Linux installer](https://docs.astral.sh/uv/getting-started/installation/):
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+If installation succeeded but the current terminal cannot find uv, load its
+environment and check the version:
+
+```bash
+source "$HOME/.local/bin/env"
+uv --version
+```
+
+If `curl` already works, there is no need to install it or run `sudo apt`.
+`uv sync --locked --group notebook` creates `.venv` automatically; you do not
+need to create a virtual environment separately.
+
+### `No locks available` during installation or checkpoint download
+
+Some network filesystems do not provide the file locks used by uv and model
+downloads. A uv cache fix alone does not relocate the TabPFN or Hugging Face
+model caches. In the same terminal used for installation and analysis, run:
+
+```bash
+export BENCHMARK_CACHE="$(mktemp -d /tmp/benchmark-cache-XXXXXXXX)"
+export UV_CACHE_DIR="$BENCHMARK_CACHE/uv"
+export TABPFN_MODEL_CACHE_DIR="$BENCHMARK_CACHE/tabpfn"
+export HF_HOME="$BENCHMARK_CACHE/huggingface"
+export HF_HUB_CACHE="$HF_HOME/hub"
+export UV_LINK_MODE=copy
+
+uv sync --locked --group notebook
+```
+
+These settings move download caches to `/tmp` without changing the source code,
+result locations, or `.venv` location. `UV_LINK_MODE=copy` avoids the hardlink
+warning when the cache and project are on different filesystems. See the
+[uv cache documentation](https://docs.astral.sh/uv/concepts/cache/) and
+[Hugging Face cache settings](https://huggingface.co/docs/huggingface_hub/en/package_reference/environment_variables).
+
+The exports apply only to this terminal and programs started from it. If using
+the notebook, start Jupyter from this terminal after setting them. If Jupyter is
+already running, stop it and relaunch it from the configured terminal so its
+kernels inherit the settings. A new terminal needs the settings again.
+`/tmp` may be cleared by the server and is usually specific to
+one machine, so checkpoints may need downloading again. For repeated runs, ask
+which local scratch directory supports locks and has enough space for model
+checkpoints. If another lock error names `.venv` rather than a cache, changing
+the cache is not sufficient; check the supported environment location with the
+server administrator.
+
+### Missing script or `cannot import name 'SETTINGS' from 'benchmark'`
+
+First check that this copy contains the necessary files:
+
+```bash
+ls -l scripts/run_analysis.py src/benchmark/__init__.py src/benchmark/settings.py
+```
+
+If any are missing, confirm that the files were committed and pushed from the
+original computer, then update this copy before continuing. Reinstalling cannot
+restore source files that are absent from the repository.
+
+If the files exist but the import fails, inspect what Python loads:
+
+```bash
+uv run --locked --no-sync python -c "import benchmark; print('File:', benchmark.__file__); print('Locations:', list(benchmark.__path__)); print('Has SETTINGS:', hasattr(benchmark, 'SETTINGS'))"
+```
+
+The file should be this project's `src/benchmark/__init__.py`. In the observed
+server failure, it was `None` and `Has SETTINGS` was `False`: stale editable
+installation metadata treated the directory as a namespace package. Rebuilding
+only the project installation fixed it:
+
+```bash
+uv sync --locked --group notebook --reinstall-package benchmark-tabpfn-medical
+uv run --locked --no-sync python -c "from benchmark import SETTINGS; print(list(SETTINGS))"
+```
+
+The check should print `[1, 2, 3, 4, 5, 6, 7, 8]`. The reinstall updates the
+project's installation in `.venv`, not its source code. Use it for this import
+problem rather than as a required step for every run. Select this project's
+`.venv` kernel in the notebook and restart it after code updates.
+
+### First repetition stays at 0%, or a failed run leaves an output folder
+
+The simulation command runs all eight baseline settings sequentially, with the
+requested number of repetitions for each setting. One iteration generates new
+training and test samples and evaluates all 12 models. The progress bar advances
+only after the entire iteration finishes and resets for the next setting.
+Checkpoint downloads and model messages are captured in the log, so the first
+iteration can take longer. The foundation-model runners currently use CPU even
+if the machine has a GPU. A bar at 0% alone does not establish that a run is stuck.
+
+From a second terminal, inspect the current setting's log. For setting 1 saved
+under `io/sim_results/main`, use:
+
+```bash
+tail -n 30 io/sim_results/main/simulation_setting1.warnings.log
+```
+
+Use the actual output folder and setting number. Logs are written while the
+analysis runs; results CSVs are saved after a setting completes. A quiet log
+alone does not establish that computation has stopped either.
+
+A failed run may already have created its output directory. Keep it for checking
+the warnings and log, and choose a new name for the retry:
+
+```bash
+uv run --locked python scripts/run_analysis.py simulation --repetitions 100 --output io/sim_results/main_retry1
+```
+
+This starts a new analysis; it does not resume the failed run. Choose another
+unused name if `main_retry1` already exists.
+
 ## Optional: recreate the included vendor sources
 
 The four renamed TabPFN source packages are included in `vendor/`. **Normal
