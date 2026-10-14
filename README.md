@@ -1,7 +1,7 @@
 # Benchmarking TabPFN on medical tabular data
 
 A Python benchmark comparing logistic regression, Random Forest, XGBoost,
-CatBoost, QUADRO, four TabPFN versions, EXAONE Tabular, and TabICL.
+CatBoost, QUADRO, TabPFN (versions 2.5, 2.6, 3, & 3.5), EXAONE Tabular, and TabICLv2.
 Experiments use synthetic scenarios or repeated sampling from three medical datasets.
 
 
