@@ -149,7 +149,6 @@ committed to Git to accompany a repository clone.
 - `src/benchmark/`: data loading, settings, model runners, analysis, and reporting.
 - `src/quadro/`: the QUADRO classifier and its mathematical solvers.
 - `vendor/`: the four renamed TabPFN source copies.
-- `scripts/setup_vendor.py`: optional source rebuilding.
 - `scripts/run_analysis.py`: terminal analysis and reporting.
 - `notebooks/run_analysis.ipynb`: pilot and interactive results.
 - `io/`: datasets, saved results, tables, and plots.
