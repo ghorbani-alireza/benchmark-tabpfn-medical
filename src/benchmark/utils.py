@@ -1,28 +1,31 @@
 import os, sys
 import numpy as np
 import glob, re
+from contextlib import contextmanager, redirect_stdout, redirect_stderr
 import logging
-from contextlib import contextmanager
+from pathlib import Path
+import time
 import warnings
 import pandas as pd
 import json
-from sklearn.exceptions import ConvergenceWarning
 
 from . import config
 
 # string lists into python lists
 def _parse_array(s):
-    """'[0.1 0.2 0.3]' or '[0.1, 0.2, 0.3]' → np.array([0.1, 0.2, 0.3])."""
+    """Read full JSON arrays, or complete arrays from older result files."""
     if not isinstance(s, str):
-        return s                      # already an array/list
-    s = s.strip().strip('[]')
-    if not s:
-        return np.array([])
-    return np.fromstring(s.replace(',', ' '), sep=' ')
+        return s
+    try:
+        return np.asarray(json.loads(s))
+    except json.JSONDecodeError:
+        if "..." in s:
+            raise ValueError("Saved array is truncated; missing values cannot be recovered.")
+        return np.fromstring(s.strip().strip("[]").replace(",", " "), sep=" ")
 
 
 def fix_list_columns(df):
-    """Parse FPR / TPR / Probas / y_test_all columns from strings to arrays."""
+    """Restore saved prediction and ROC arrays from text columns in a results DataFrame."""
     list_keys = ('_FPR', '_TPR', '_Probas', 'y_test_all')
     for col in df.columns:
         if any(k in col for k in list_keys):
@@ -31,6 +34,7 @@ def fix_list_columns(df):
 
     
 def load_fixed(files):
+    """Read the selected result CSV files and restore their array columns."""
     out = {}
     for sid, path in files.items():
         df = pd.read_csv(path)
@@ -41,6 +45,7 @@ def load_fixed(files):
 
 # metadata for synthetic
 def make_metadata(n, mu, dist, iter):
+    """Build a short text description of a synthetic experiment for display."""
     return (f"n_tr={n['n1_tr']}/{n['n2_tr']} |"
            f"n_te={n['n1_te']}/{n['n2_te']} |"
            f"dim={len(mu['mu1'])} |"
@@ -48,6 +53,7 @@ def make_metadata(n, mu, dist, iter):
            f"iterations={iter}")
 # metadata for real data
 def make_real_metadata(dataset_name, n, iter):
+    """Build a short text description of a real-data experiment for display."""
     return (f"Dataset: {dataset_name} | "
             f"n_tr={n['n1_tr']}/{n['n2_tr']} | "
             f"n_te={n['n1_te']}/{n['n2_te']} | "
@@ -67,7 +73,9 @@ from . import config
 
 
 def save_outputs(errors, name, output_dir=None, meta=None):
-    """Save a result dict as <name>.csv plus <name>.meta.json.
+    """Save full results to CSV and, when supplied, experiment metadata to JSON.
+    
+    Prediction and ROC arrays are written as complete JSON lists inside CSV cells.
     """
     if output_dir is None:
         output_dir = config.SIM_RESULTS_PATH
@@ -75,8 +83,11 @@ def save_outputs(errors, name, output_dir=None, meta=None):
 
     # ── main data ──
     csv_path = os.path.join(output_dir, f"{name}.csv")
-    pd.DataFrame(errors).to_csv(csv_path, index=False)
-    print(f"✓ Saved {csv_path}")
+    frame = pd.DataFrame(errors)
+    for column in frame.columns:
+        if column.endswith(("_FPR", "_TPR", "_Probas")) or column == "y_test_all":
+            frame[column] = frame[column].map(lambda values: json.dumps(np.asarray(values).tolist()))
+    frame.to_csv(csv_path, index=False)
 
     # ── sidecar metadata ──
     if meta is not None:
@@ -99,76 +110,86 @@ def save_outputs(errors, name, output_dir=None, meta=None):
 
         with open(meta_path, "w") as f:
             json.dump(_clean(meta), f, indent=2)
-        print(f"✓ Saved {meta_path}")
 
     return csv_path
 
 
 #################################################################################
 
-# there are useless warnings & messages interrupting tqdm - >:(
+# Keep model messages in files while the main progress bar stays visible.
 
 @contextmanager
-def suppress_output():
-    # save
-    old_stdout = sys.stdout
-    old_stderr = sys.stderr
+def capture_output(warnings_file, output_dir):
+    """Temporarily send model messages to files instead of the notebook/terminal.
 
-    with open(os.devnull, 'w') as devnull:
-        sys.stdout = devnull
-        sys.stderr = devnull
+    The analysis uses this as:
+        with capture_output(warnings_file, output_dir) as (warns, progress):
+            # Run the models; pass file=progress to the main tqdm bar.
 
-        # disable tqdm
-        old_tqdm_disable = os.environ.get('TQDM_DISABLE', None)
-        os.environ['TQDM_DISABLE'] = '1'
+    Python warnings are saved as JSON. Printed messages and library logs go
+    to the companion .log file. The original output settings are restored
+    when the block ends, including when a model raises an error.
+    """
+    # Choose a unique warning filename unless the caller supplied one.
+    if warnings_file is None:
+        warnings_file = Path(output_dir) / "warnings" / f"{time.time_ns()}.warnings.json"
+    warning_path = Path(warnings_file)
+    warning_path.parent.mkdir(parents=True, exist_ok=True)
+    # Keep the original screen output for the main progress bar.
+    progress = sys.stderr
+    saved_warnings = []
+    # Library logging may use existing screen handlers, so redirect those too.
+    loggers = [logging.getLogger(name) for name in (
+        "", "exaonetabular", "huggingface_hub", "tabicl", "tabpfn",
+        "tabpfn_v25", "tabpfn_v26", "tabpfn_v3", "tabpfn_v35",
+    )]
+    # Remember the current settings so this changes only the analysis block.
+    original_logging = [(logger.handlers[:], logger.level, logger.propagate) for logger in loggers]
+    # "x" creates a new file and prevents overwriting an earlier run.
+    with warning_path.open("x", encoding="utf-8") as warning_file:
+        with warning_path.with_suffix(".log").open("x", encoding="utf-8") as log:
+            handler = logging.StreamHandler(log)
+            try:
+                for logger in loggers:
+                    logger.handlers = [handler]
+                    logger.setLevel(logging.INFO)
+                    logger.propagate = False
+                # Capture once around the whole run, including its thread workers.
+                # Capture print() and library progress messages, including TabICL.
+                with redirect_stdout(log), redirect_stderr(log):
+                    with warnings.catch_warnings(record=True) as recorded:
+                        # Record every warning, including repeated convergence warnings.
+                        warnings.simplefilter("always")
+                        try:
+                            # Run the simulation/resampling code inside its with block.
+                            yield saved_warnings, progress
+                        finally:
+                            # Convert warning objects into ordinary dictionaries for JSON.
+                            saved_warnings.extend({
+                                "category": item.category.__name__,
+                                "message": str(item.message),
+                                "filename": item.filename,
+                                "lineno": item.lineno,
+                            } for item in recorded)
+            finally:
+                # Restore logging and save warnings even if execution failed.
+                for logger, (handlers, level, propagate) in zip(loggers, original_logging):
+                    logger.handlers = handlers
+                    logger.setLevel(level)
+                    logger.propagate = propagate
+                json.dump(saved_warnings, warning_file, indent=2)
 
-        # tabPFN verbosity
-        old_tabpfn_verbose = os.environ.get('TABPFN_VERBOSE', None)
-        os.environ['TABPFN_VERBOSE'] = '0'
-
-        try:
-            yield
-        finally:
-            # Restore
-            sys.stdout = old_stdout
-            sys.stderr = old_stderr
-            if old_tqdm_disable is None:
-                os.environ.pop('TQDM_DISABLE', None)
-            else:
-                os.environ['TQDM_DISABLE'] = old_tqdm_disable
-
-            if old_tabpfn_verbose is None:
-                os.environ.pop('TABPFN_VERBOSE', None)
-            else:
-                os.environ['TABPFN_VERBOSE'] = old_tabpfn_verbose
-
-
-current_iteration = 0
-captured_warnings = []
-
-def capture_warnings(message, category, filename, lineno, file=None, line=None):
-    captured_warnings.append({
-        'iteration': current_iteration,
-        'message': str(message),
-        'category': category.__name__,
-        'filename': filename,
-        'lineno': lineno
-    })
-
-# convergenceWarning display
-warnings.filterwarnings('ignore', category=ConvergenceWarning)
-
-# tabpfn logging output
-logging.getLogger('tabpfn').setLevel(logging.ERROR)
 
 #################################################################################
 #finding and reading saved results
 def _natural_key(name):
+    """Split names into text and numbers so setting 2 sorts before setting 10."""
     return [int(t) if t.isdigit() else t
             for t in re.split(r'(\d+)', name)]
 
 
 def discover_sim(sim_dir, variant='baseline'):
+    """Find baseline or sensitivity result CSV files in the selected directory."""
     pattern = ('simulation_setting*_sensitivity.csv' if variant == 'sensitivity'
                else 'simulation_setting*.csv')
     full = os.path.join(glob.escape(sim_dir), pattern)
@@ -186,13 +207,14 @@ def discover_sim(sim_dir, variant='baseline'):
 
 
 def discover_real(real_dir):
+    """Find real-data result CSV files in the selected directory."""
     full = os.path.join(glob.escape(real_dir), 'realdata_*.csv')
     files = sorted(glob.glob(full),
                    key=lambda p: _natural_key(os.path.basename(p)))
     return {f'D{i}': f for i, f in enumerate(files, 1)}
 
 def read_labels(files):
-    """{sid: path} → {sid: label} from .meta.json. Falls back to sid."""
+    """Read plot labels from the metadata files stored beside result CSV files."""
     import json
     out = {}
     for sid, path in files.items():
@@ -206,3 +228,24 @@ def read_labels(files):
     return out
     
     
+
+
+def read_bayes_auc(files):
+    """Load Bayes references beside CSVs, or calculate from saved distributions.
+
+    Older results without full distribution metadata and real-data results are
+    skipped: their generating distributions cannot safely be inferred.
+    This reads metadata only; it does not fit models or modify saved results.
+    """
+    from .settings import calculate_bayes_auc
+    references = {}
+    for name, path in files.items():
+        meta_path = Path(path).with_suffix('.meta.json')
+        if not meta_path.exists():
+            continue
+        meta = json.loads(meta_path.read_text())
+        if meta.get('bayes_auc') is not None:
+            references[name] = meta['bayes_auc']
+        elif all(key in meta for key in ('mu', 'sigma1', 'sigma2', 'dist')):
+            references[name] = calculate_bayes_auc(meta)
+    return references

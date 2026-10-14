@@ -7,6 +7,9 @@ from scipy.special import logit
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 
+from .utils import capture_output
+from . import config
+
 
 # import models from model_definitions.py
 from .model_definitions import (
@@ -15,20 +18,20 @@ from .model_definitions import (
     run_random_forest,
     run_xgboost,
     run_catboost,
+    run_quadro,
     run_tabpfn_v25,
     run_tabpfn_v26,
     run_tabpfn_v3,
     run_tabpfn_v35,
     run_exaone,
     run_tabicl,
-    run_quadro
 )
 
 
 # resampling Functions for realdata
 
 def _run_and_pack(fn, y_test, *args, **kwargs):
-    """Run a model fn, time it, compute calibration, return the 9-tuple."""
+    """Run one model, measure its runtime, and calculate calibration from its test probabilities."""
     start = time.perf_counter()
     res = fn(*args, **kwargs)
     elapsed = time.perf_counter() - start
@@ -44,6 +47,10 @@ def _run_and_pack(fn, y_test, *args, **kwargs):
 def _single_real_iteration(i, X_np, y_np, idx0, idx1,
                            n1_tr, n2_tr, n1_te, n2_te, g_seed):
 
+    """Sample separate training and test rows from each class and evaluate every model once.
+    
+    The split is by row, not by patient. An inner training/validation split is used for tuning.
+    """
     np.random.seed(g_seed)
     rng = np.random.default_rng(seed=i+g_seed)
 
@@ -95,6 +102,11 @@ def _single_real_iteration(i, X_np, y_np, idx0, idx1,
         X_train, X_test, y_train, y_test,
         X_train_sub, y_train_sub, X_val, y_val,
         random_state=i+g_seed),
+    'Quadro': _run_and_pack(
+        run_quadro, y_test,
+        X_train, X_test, y_train, y_test,
+        X_train_sub, y_train_sub, X_val, y_val,
+        random_state=i+g_seed),
     'TabPFN_v25': _run_and_pack(
         run_tabpfn_v25, y_test,
         X_train, X_test, y_train, y_test, random_state=i+g_seed),
@@ -113,9 +125,6 @@ def _single_real_iteration(i, X_np, y_np, idx0, idx1,
     'TabICL-V2': _run_and_pack(
         run_tabicl, y_test,
         X_train, X_test, y_train, y_test, random_state=i+g_seed)
-    'Quadro': _run_and_pack(
-        run_quadro, y_test,
-        X_train, X_test, y_train, y_test, random_state=i+g_seed)
 }
 
 
@@ -123,9 +132,13 @@ def _single_real_iteration(i, X_np, y_np, idx0, idx1,
 
 
 #  part2 - fucntion for all iterations
-def evaluate_on_real_data(X, y, n, iter=100, g_seed = 2025):
+def evaluate_on_real_data(X, y, n, iter=100, g_seed = 2025, *, warnings_file=None):
     #np.random.seed(g_seed)
 
+    """Repeat row-level sampling and model evaluation on an existing dataset.
+    
+    Check the available class sizes first, run repetitions in parallel, and combine their results.
+    """
     X_np = np.asarray(X, dtype=np.float32)
     y_np = np.asarray(y, dtype=int)
 
@@ -153,6 +166,8 @@ def evaluate_on_real_data(X, y, n, iter=100, g_seed = 2025):
         'XGBoost_Brier': [], 'XGBoost_CalSlope': [], 'XGBoost_CalIntercept': [], 'XGBoost_Probas': [],
         'CatBoost_MSE': [], 'CatBoost_AUC': [], 'CatBoost_Time': [], 'CatBoost_FPR': [], 'CatBoost_TPR': [],
         'CatBoost_Brier': [], 'CatBoost_CalSlope': [], 'CatBoost_CalIntercept': [], 'CatBoost_Probas': [],
+        'Quadro_MSE': [], 'Quadro_AUC': [], 'Quadro_Time': [], 'Quadro_FPR': [], 'Quadro_TPR': [],
+        'Quadro_Brier': [], 'Quadro_CalSlope': [], 'Quadro_CalIntercept': [], 'Quadro_Probas': [],
         'TabPFN_v25_MSE': [], 'TabPFN_v25_AUC': [], 'TabPFN_v25_Time': [], 'TabPFN_v25_FPR': [], 'TabPFN_v25_TPR': [],
         'TabPFN_v25_Brier': [], 'TabPFN_v25_CalSlope': [], 'TabPFN_v25_CalIntercept': [], 'TabPFN_v25_Probas': [],
         'TabPFN_v26_MSE': [], 'TabPFN_v26_AUC': [], 'TabPFN_v26_Time': [], 'TabPFN_v26_FPR': [], 'TabPFN_v26_TPR': [],
@@ -165,50 +180,45 @@ def evaluate_on_real_data(X, y, n, iter=100, g_seed = 2025):
         'EXAONE_Brier': [], 'EXAONE_CalSlope': [], 'EXAONE_CalIntercept': [], 'EXAONE_Probas': [],
         'TabICL-V2_MSE': [], 'TabICL-V2_AUC': [], 'TabICL-V2_Time': [], 'TabICL-V2_FPR': [], 'TabICL-V2_TPR': [],
         'TabICL-V2_Brier': [], 'TabICL-V2_CalSlope': [], 'TabICL-V2_CalIntercept': [], 'TabICL-V2_Probas': [],
-        'Quadro_MSE': [], 'Quadro_AUC': [], 'Quadro_Time': [], 'Quadro_FPR': [], 'Quadro_TPR': [],
-        'Quadro_Brier': [], 'Quadro_CalSlope': [], 'Quadro_CalIntercept': [], 'Quadro_Probas': [],
         'y_test_all': []
     }
 
-    # parallel - cahnge n_job for ibe
-    results = Parallel(n_jobs=10, prefer="threads", verbose=0)(
-        delayed(_single_real_iteration)(
-            i, X_np, y_np, idx0, idx1,
-            n1_tr, n2_tr, n1_te, n2_te, g_seed
+    with capture_output(warnings_file, config.REAL_RESULTS_DIR) as (captured_warnings, progress):
+        # parallel - cahnge n_job for ibe
+        results = Parallel(n_jobs=10, prefer="threads", verbose=0, return_as="generator")(
+            delayed(_single_real_iteration)(
+                i, X_np, y_np, idx0, idx1,
+                n1_tr, n2_tr, n1_te, n2_te, g_seed
+            )
+            for i in range(iter)
         )
-        for i in tqdm(range(iter), desc="Real‑data resampling",
-                                     leave=True)
-    )
-    print("parallel done - aggregating results...")
-    t0 = time.perf_counter()
 
-    for res in results:
-        errors['y_test_all'].append(res['y_test'])
-        for key, prefix in [
-            ('L-SLR', 'L-SLR_'),
-            ('SLR', 'SLR_'),
-            ('RandomForest', 'RandomForest_'),
-            ('XGBoost', 'XGBoost_'),
-            ('CatBoost', 'CatBoost_'),
-            ('TabPFN_v25', 'TabPFN_v25_'),
-            ('TabPFN_v26', 'TabPFN_v26_'),
-            ('TabPFN_v3', 'TabPFN_v3_'),
-            ('TabPFN_v35', 'TabPFN_v35_'),
-            ('EXAONE', 'EXAONE_'),
-            ('TabICL-V2', 'TabICL-V2_'),
-            ('Quadro', 'Quadro_')
-        ]:
-            (t, mse, auc, fpr, tpr, proba, brier, slope, intercept) = res[key]
-            errors[prefix + 'Time'].append(t)
-            errors[prefix + 'MSE'].append(mse)
-            errors[prefix + 'AUC'].append(auc)
-            errors[prefix + 'FPR'].append(fpr)
-            errors[prefix + 'TPR'].append(tpr)
-            errors[prefix + 'Brier'].append(brier)
-            errors[prefix + 'CalSlope'].append(slope)
-            errors[prefix + 'CalIntercept'].append(intercept)
-            errors[prefix + 'Probas'].append(proba)
-    print(f"aggregation time: {time.perf_counter() - t0:.2f} seconds")
+        for res in tqdm(results, total=iter, desc="Real-data resampling", file=progress):
+            errors['y_test_all'].append(res['y_test'])
+            for key, prefix in [
+                ('L-SLR', 'L-SLR_'),
+                ('SLR', 'SLR_'),
+                ('RandomForest', 'RandomForest_'),
+                ('XGBoost', 'XGBoost_'),
+                ('CatBoost', 'CatBoost_'),
+                ('Quadro', 'Quadro_'),
+                ('TabPFN_v25', 'TabPFN_v25_'),
+                ('TabPFN_v26', 'TabPFN_v26_'),
+                ('TabPFN_v3', 'TabPFN_v3_'),
+                ('TabPFN_v35', 'TabPFN_v35_'),
+                ('EXAONE', 'EXAONE_'),
+                ('TabICL-V2', 'TabICL-V2_')
+            ]:
+                (t, mse, auc, fpr, tpr, proba, brier, slope, intercept) = res[key]
+                errors[prefix + 'Time'].append(t)
+                errors[prefix + 'MSE'].append(mse)
+                errors[prefix + 'AUC'].append(auc)
+                errors[prefix + 'FPR'].append(fpr)
+                errors[prefix + 'TPR'].append(tpr)
+                errors[prefix + 'Brier'].append(brier)
+                errors[prefix + 'CalSlope'].append(slope)
+                errors[prefix + 'CalIntercept'].append(intercept)
+                errors[prefix + 'Probas'].append(proba)
     return errors
 
 

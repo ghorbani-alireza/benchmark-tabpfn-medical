@@ -6,9 +6,7 @@
 token.py
 
 
-# Plots and raw data
-/io/plots/
-
+# Raw data
 /io/real_data/
 data1_echo_notes.pkl
 
@@ -21,3 +19,23 @@ data3_blood_gas_oximetry.pkl
 
 # when using uv sync it will create .venv and install project dependencies
 .venv/
+
+# Include the TabPFN source copies and their required assets.
+#!/vendor/
+#!/vendor/**
+
+# Ignore Python caches, including caches generated inside vendor.
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Notebook checkpoints and test/tool caches are generated automatically.
+.ipynb_checkpoints/
+.pytest_cache/
+.ruff_cache/
+catboost_info/
+
+# Optional pilot results are local checks, separate from paper results.
+/io/sim_results/pilot_setting2/

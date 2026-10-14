@@ -1,6 +1,6 @@
 # src/__init__.py
 from .data_loader import load_echo_data, load_glucose_data, load_blood_gas_data
-from .settings import SETTINGS, SENSITIVITY
+from .settings import SETTINGS, SENSITIVITY, calculate_bayes_auc
 from .simulation_core import simulation
 from .resampling_core import evaluate_on_real_data
 from .model_definitions import (

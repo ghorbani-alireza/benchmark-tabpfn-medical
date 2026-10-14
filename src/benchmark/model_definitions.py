@@ -7,78 +7,57 @@ os.environ["HF_HUB_DISABLE_XET"] = "1"      # kills the "reconstructing file" ba
 os.environ["TRANSFORMERS_NO_ADVISORY_WARNINGS"] = "1"
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-import sys
-_HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.join(_HERE, "vendor"))
-
-import logging
-import warnings
-logging.getLogger("exaonetabular").setLevel(logging.ERROR)
-logging.getLogger("exaonetabular.checkpoint").setLevel(logging.ERROR)
-logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
-logging.getLogger("tabpfn").setLevel(logging.ERROR)
-warnings.filterwarnings("ignore", module="exaonetabular")
-logging.getLogger("tabicl").setLevel(logging.ERROR)
-logging.getLogger("tabicl.model.checkpoint").setLevel(logging.ERROR)
-
 import numpy as np
 
-from importlib.metadata import version 
 
 from sklearn.metrics import roc_curve, balanced_accuracy_score, roc_auc_score, mean_squared_error
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GridSearchCV
 from sklearn.preprocessing import StandardScaler
-print("scikit‑learn package version:", version("scikit-learn"))
+def _configure_pretrained_credentials():
+    """Load literal tokens from .secrets/token.py; environment values win."""
+    import ast
+    from pathlib import Path
 
-from xgboost import XGBClassifier
-print("XGBoost package version:", version("xgboost"))
+    names = {"HF_TOKEN", "TABPFN_TOKEN"}
+    if all(os.environ.get(name) for name in names):
+        return
 
-from catboost import CatBoostClassifier
-print("CatBoost package version:", version("catboost"))
+    token_path = Path(__file__).resolve().parents[2] / ".secrets" / "token.py"
+    if not token_path.is_file():
+        return
 
+    try:
+        tree = ast.parse(token_path.read_text(encoding="utf-8"))
+    except SyntaxError:
+        raise ValueError("Invalid Python syntax in .secrets/token.py") from None
 
-# TabPFN - read tokens from  config.py
-from .tokens import (
-    HF_TOKEN,
-    TABPFN_TOKEN
-)
-
-os.environ["TABPFN_TOKEN"] = TABPFN_TOKEN             
-
-from huggingface_hub import login # tabpfn needs huggingface
-login(token=HF_TOKEN)
-try:
-    from tabpfn_v25 import TabPFNClassifier as TabPFNClassifier_v25
-    from tabpfn_v26 import TabPFNClassifier as TabPFNClassifier_v26
-    from tabpfn_v3  import TabPFNClassifier as TabPFNClassifier_v3
-    from tabpfn_v35 import TabPFNClassifier as TabPFNClassifier_v35
-    _TABPFN_VERSIONS_READY = True
-except ModuleNotFoundError:
-    TabPFNClassifier_v25 = TabPFNClassifier_v26 = None
-    TabPFNClassifier_v3  = TabPFNClassifier_v35 = None
-    _TABPFN_VERSIONS_READY = False
-    print("⚠️ tabpfn_v25/v26/v3/v35 not installed — run installer first.")
-
-if _TABPFN_VERSIONS_READY:
-    for _p in ("tabpfn_v25", "tabpfn_v26", "tabpfn_v3", "tabpfn_v35"):
-        print(_p, "loaded")
-            
-
-import exaonetabular
-from exaonetabular import EXAONETabularClassifier
-print("EXAONE package version:", version("exaonetabular"))
-
-
-from tabicl import TabICLClassifier
-print("TabICL package version:", version("tabicl"))
-
+    for statement in tree.body:
+        if isinstance(statement, ast.Assign):
+            targets = statement.targets
+        elif isinstance(statement, ast.AnnAssign):
+            targets = [statement.target]
+        else:
+            continue
+        for target in targets:
+            if not isinstance(target, ast.Name) or target.id not in names:
+                continue
+            if os.environ.get(target.id):
+                continue
+            value = statement.value
+            if not isinstance(value, ast.Constant) or not isinstance(value.value, str):
+                raise ValueError(
+                    f"{target.id} in .secrets/token.py must be a literal string"
+                )
+            if value.value:
+                os.environ[target.id] = value.value
 
 
 # Linear Sparse Logistic Regression
 def run_linear_sparse_logistic_regression(X_train, X_test, y_train, y_test, X_train_sub, y_train_sub, X_val, y_val, random_state=None):
     # model and tuning grid
+    """Tune L1 logistic regression on the validation split, refit on all training data, and evaluate test data."""
     lr = LogisticRegression(
         penalty='l1',
         solver='liblinear',
@@ -126,6 +105,7 @@ def run_linear_sparse_logistic_regression(X_train, X_test, y_train, y_test, X_tr
 def run_sparse_logistic_regression(X_train, X_test, y_train, y_test, X_train_sub, y_train_sub, X_val, y_val, random_state=None):
 
     # augment features Function
+    """Add squared features and pairwise products, then tune and evaluate L1 logistic regression."""
     def _augment_features(X):
         n, d = X.shape
         idx = np.triu_indices(d, k=0)  # indices for upper triangle + diagonal
@@ -182,6 +162,7 @@ def run_sparse_logistic_regression(X_train, X_test, y_train, y_test, X_train_sub
 def run_random_forest(X_train, X_test, y_train, y_test, X_train_sub, y_train_sub, X_val, y_val, random_state=None):
 
     # model and tuning grid
+    """Choose tree count and depth using validation AUC, refit the forest, and evaluate test data."""
     rf = RandomForestClassifier(
         n_estimators=100, # number of decision trees
         max_depth=5, #important for overfiitng
@@ -224,6 +205,8 @@ def run_random_forest(X_train, X_test, y_train, y_test, X_train_sub, y_train_sub
 
 # XGBoost
 def run_xgboost(X_train, X_test, y_train, y_test, X_train_sub, y_train_sub, X_val, y_val, random_state=None):
+    """Choose tree count and depth using validation AUC, refit XGBoost, and evaluate test data."""
+    from xgboost import XGBClassifier
 
     # Define model and tuning grid
     xgb = XGBClassifier(
@@ -270,6 +253,8 @@ def run_xgboost(X_train, X_test, y_train, y_test, X_train_sub, y_train_sub, X_va
 
 # CatBoost
 def run_catboost(X_train, X_test, y_train, y_test, X_train_sub, y_train_sub, X_val, y_val, random_state=None):
+    """Choose iteration count and depth using validation AUC, refit CatBoost, and evaluate test data."""
+    from catboost import CatBoostClassifier
     #  model and tuning grid
     cb = CatBoostClassifier(
         iterations=100,
@@ -310,12 +295,69 @@ def run_catboost(X_train, X_test, y_train, y_test, X_train_sub, y_train_sub, X_v
 
 
 ################################################################################
+# Quadro
+def run_quadro(X_train, X_test, y_train, y_test,
+               X_train_sub, y_train_sub, X_val, y_val,
+               random_state=None, *, metrics=None, solver="admm"):
+    """Choose QUADRO penalties using validation data, then evaluate on test data.
+
+    random_state is accepted like the other runners; QUADRO's fit is deterministic.
+    """
+    from quadro import QUADROClassifier
+    from threadpoolctl import threadpool_limits
+
+    # The same five choices as before. Each pair is:
+    # (penalty for quadratic terms, penalty for linear terms).
+    penalty_pairs = [(0.0, 0.0), (0.01, 0.01), (0.01, 0.1), (0.1, 0.1), (0.1, 1.0)]
+
+    # 1. Try each choice on the inner training data; compare validation AUC.
+    with threadpool_limits(limits=1):
+        best_auc = -np.inf
+        best_quadratic, best_linear = penalty_pairs[0]
+        for quadratic_penalty, linear_penalty in penalty_pairs:
+            candidate = QUADROClassifier(
+                lambda_quadratic=quadratic_penalty,
+                lambda_linear=linear_penalty,
+                solver=solver,
+            )
+            candidate.fit(X_train_sub, y_train_sub)
+            validation_proba = candidate.predict_proba(X_val)[:, 1]
+            validation_auc = roc_auc_score(y_val, validation_proba)
+            if validation_auc > best_auc:
+                best_auc = validation_auc
+                best_quadratic = quadratic_penalty
+                best_linear = linear_penalty
+
+        # 2. Refit the winning choice using all training data.
+        model = QUADROClassifier(
+            lambda_quadratic=best_quadratic,
+            lambda_linear=best_linear,
+            solver=solver,
+        )
+        model.fit(X_train, y_train)
+
+        # 3. Predict the untouched test data and calculate the same measures
+        # returned by every other model runner.
+        pred = model.predict(X_test)
+        proba = model.predict_proba(X_test)[:, 1]
+        fpr, tpr, _ = roc_curve(y_test, proba)
+        brier = np.mean((proba - y_test) ** 2)
+        return (
+            balanced_accuracy_score(y_test, pred),
+            roc_auc_score(y_test, proba),
+            mean_squared_error(y_test, pred),
+            fpr, tpr, proba, brier,
+        )
+
+
+################################################################################
 
 # TabPFN
 # Generic runner to use for all TabPFN versions  
 def _run_tabpfn_generic(X_train, X_test, y_train, y_test, model_class, model_kwargs, random_state):
     
     # scale features
+    """Scale features using training data, fit the selected pretrained TabPFN version, and return test measures."""
     scaler = StandardScaler()
     X_train_scaled = scaler.fit_transform(X_train)
     X_test_scaled = scaler.transform(X_test)
@@ -339,6 +381,10 @@ def _run_tabpfn_generic(X_train, X_test, y_train, y_test, model_class, model_kwa
 
 # Runner for each version
 def run_tabpfn_v25(X_train, X_test, y_train, y_test, random_state=None):
+    """Evaluate the vendored TabPFN 2.5 classifier on CPU with the supplied random seed."""
+    _configure_pretrained_credentials()
+    from tabpfn_v25 import TabPFNClassifier as TabPFNClassifier_v25
+
     return _run_tabpfn_generic(
         X_train, X_test, y_train, y_test,
         TabPFNClassifier_v25,
@@ -347,6 +393,10 @@ def run_tabpfn_v25(X_train, X_test, y_train, y_test, random_state=None):
     )
 
 def run_tabpfn_v26(X_train, X_test, y_train, y_test, random_state=None):
+    """Evaluate the vendored TabPFN 2.6 classifier on CPU with the supplied random seed."""
+    _configure_pretrained_credentials()
+    from tabpfn_v26 import TabPFNClassifier as TabPFNClassifier_v26
+
     return _run_tabpfn_generic(
         X_train, X_test, y_train, y_test,
         TabPFNClassifier_v26,
@@ -355,6 +405,10 @@ def run_tabpfn_v26(X_train, X_test, y_train, y_test, random_state=None):
     )
 
 def run_tabpfn_v3(X_train, X_test, y_train, y_test, random_state=None):
+    """Evaluate the vendored TabPFN 3 classifier on CPU with the supplied random seed."""
+    _configure_pretrained_credentials()
+    from tabpfn_v3 import TabPFNClassifier as TabPFNClassifier_v3
+
     return _run_tabpfn_generic(
         X_train, X_test, y_train, y_test,
         TabPFNClassifier_v3,
@@ -363,6 +417,10 @@ def run_tabpfn_v3(X_train, X_test, y_train, y_test, random_state=None):
     )
 
 def run_tabpfn_v35(X_train, X_test, y_train, y_test, random_state=None):
+    """Evaluate the vendored TabPFN 3.5 classifier on CPU with the supplied random seed."""
+    _configure_pretrained_credentials()
+    from tabpfn_v35 import TabPFNClassifier as TabPFNClassifier_v35
+
     return _run_tabpfn_generic(
         X_train, X_test, y_train, y_test,
         TabPFNClassifier_v35,
@@ -375,9 +433,16 @@ def run_tabpfn_v35(X_train, X_test, y_train, y_test, random_state=None):
 ################################################################################
 # EXAONE
 def run_exaone(X_train, X_test, y_train, y_test, random_state=None):
+    """Load pretrained EXAONE using the supplied seed, fit training data, and evaluate test data on CPU."""
+    _configure_pretrained_credentials()
+    from exaonetabular import EXAONETabularClassifier
+    from .execution import single_threaded_torch
 
     with single_threaded_torch(n_threads=1):
-        clf = EXAONETabularClassifier.from_pretrained(device="cpu")
+        clf = EXAONETabularClassifier.from_pretrained(
+            device="cpu",
+            seed=random_state,
+        )
         clf.fit(X_train, y_train)
         pred = clf.predict(X_test)
         proba = clf.predict_proba(X_test)[:, 1]
@@ -394,9 +459,13 @@ def run_exaone(X_train, X_test, y_train, y_test, random_state=None):
     ################################################################################
 # TabICLv2
 def run_tabicl(X_train, X_test, y_train, y_test, random_state=None):
+    """Fit the pretrained TabICL classifier and evaluate test data on CPU without verbose messages."""
+    _configure_pretrained_credentials()
+    from tabicl import TabICLClassifier
     clf = TabICLClassifier(
         device="cpu",
         n_jobs=1,
+        verbose=False,
         random_state=random_state if random_state is not None else 42,
     )
     clf.fit(X_train, y_train)
@@ -414,38 +483,4 @@ def run_tabicl(X_train, X_test, y_train, y_test, random_state=None):
 
 
 
-
-################################################################################
-# Quadro
-def run_quadro(X_train, X_test, y_train, y_test,
-               X_train_sub, y_train_sub, X_val, y_val, random_state=None, *, metrics=None, solver="admm"): #solver="linearized_alm"
-    """Tune QUADRO on the same held-out training split as classical models."""
-    from quadro import QUADROClassifier
-
-    # QUADRO has no n_jobs parameter: tuning is sequential and numerical threads
-    # are limited here. Its CLIME solver also sets HiGHS threads=1 in moments.py.
-    with threadpool_limits(limits=1):
-        best_auc = -np.inf
-        best_parameters = None
-        for penalty in (0.0, 0.01, 0.1):
-            for ratio in (1.0, 10.0):
-                parameters = {"lambda_quadratic": penalty, "lambda_linear": ratio * penalty, "solver": solver}
-                candidate = QUADROClassifier(**parameters)
-                candidate.fit(X_train_sub, y_train_sub)
-                auc = roc_auc_score(y_val, candidate.predict_proba(X_val)[:, 1])
-                if auc > best_auc:
-                    best_auc, best_parameters = auc, parameters
-                if penalty == 0:
-                    break  # The ratio has no effect at zero penalty.
-        model = QUADROClassifier(**best_parameters).fit(X_train, y_train)
-        pred= model.predict(X_test)
-        proba = model.predict_proba(X_test)[:, 1]
-        fpr, tpr, _ = roc_curve(y_test, proba)
-        brier = np.mean((proba - y_test) ** 2)
-        return (
-            balanced_accuracy_score(y_test, pred),
-            roc_auc_score(y_test, proba),
-            mean_squared_error(y_test, pred),
-            fpr, tpr, proba, brier
-        )
 

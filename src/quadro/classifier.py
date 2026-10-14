@@ -1,4 +1,4 @@
-"""Scikit-learn-compatible QUADRO projection and binary classifier."""
+"""QUADRO learns a quadratic score, then uses it to classify two groups."""
 
 import numpy as np
 from scipy.special import ndtr
@@ -37,12 +37,11 @@ def classification_threshold(means, variances, priors):
     width = 12 * np.sqrt(max(variances))
     candidates = roots + [min(means) - width, max(means) + width, (m0 + m1) / 2]
 
-    def risk(c):
-        return priors[0] * ndtr((c - m0) / np.sqrt(v0)) + priors[1] * ndtr(
-            (m1 - c) / np.sqrt(v1)
-        )
-
-    return float(min(candidates, key=risk))
+    # Calculate the estimated error at each possible cutoff and take the best.
+    candidates = np.asarray(candidates)
+    risks = priors[0] * ndtr((candidates - m0) / np.sqrt(v0))
+    risks += priors[1] * ndtr((m1 - candidates) / np.sqrt(v1))
+    return float(candidates[np.argmin(risks)])
 
 
 class QUADROClassifier(ClassifierMixin, BaseEstimator):
@@ -93,6 +92,8 @@ class QUADROClassifier(ClassifierMixin, BaseEstimator):
         self.solver = solver
 
     def fit(self, X, y):
+        """Learn the score, class cutoff, and probability conversion from training data."""
+        # 1. Check that the chosen options and training data are valid.
         if self.solver not in ("admm", "linearized_alm"):
             raise ValueError("solver must be 'admm' or 'linearized_alm'")
         if self.lambda_quadratic < 0 or self.lambda_linear < 0:
@@ -116,11 +117,13 @@ class QUADROClassifier(ClassifierMixin, BaseEstimator):
             raise ValueError(
                 "QUADRO requires exactly two classes with at least two observations each"
             )
+        # 2. Put features on a comparable scale, then separate the two classes.
         self.scaler_ = StandardScaler(
             with_mean=self.standardize, with_std=self.standardize
         ).fit(X)
         transformed = self.scaler_.transform(X)
         groups = [transformed[y == label] for label in self.classes_]
+        # 3. Estimate each class's average feature values and covariance.
         moments = [
             estimate_moments(group, robust=self.robust, ridge=self.ridge)
             for group in groups
@@ -129,21 +132,19 @@ class QUADROClassifier(ClassifierMixin, BaseEstimator):
         self.covariances_ = np.array([item[1] for item in moments])
         self.class_prior_ = counts / counts.sum()
         self.kappa_ = counts[1] / counts[0] if self.kappa is None else self.kappa
-        self.gamma_ = (
-            float(
-                np.average(
-                    [
-                        estimate_kurtosis(
-                            group, *moment, self.precision, self.clime_lambda
-                        )
-                        for group, moment in zip(groups, moments)
-                    ],
-                    weights=counts,
+        # 4. Estimate how heavy the distribution tails are, or use the supplied value.
+        if self.gamma == "auto":
+            kurtosis_values = []
+            for group, (mean, covariance) in zip(groups, moments):
+                value = estimate_kurtosis(
+                    group, mean, covariance, self.precision, self.clime_lambda
                 )
-            )
-            if self.gamma == "auto"
-            else float(self.gamma)
-        )
+                kurtosis_values.append(value)
+            self.gamma_ = float(np.average(kurtosis_values, weights=counts))
+        else:
+            self.gamma_ = float(self.gamma)
+
+        # 5. Solve for the quadratic weights (omega) and linear weights (delta).
         optimizer = solve_quadro
         if self.solver == "linearized_alm":
             from .linearized import solve_quadro_alm
@@ -161,6 +162,7 @@ class QUADROClassifier(ClassifierMixin, BaseEstimator):
                 tol=self.tol,
             )
         )
+        # 6. Estimate the score distribution in each class and choose a cutoff.
         projected = [
             projected_moments(self.omega_, self.delta_, mean, covariance, self.gamma_)
             for mean, covariance in zip(self.means_, self.covariances_)
@@ -170,19 +172,16 @@ class QUADROClassifier(ClassifierMixin, BaseEstimator):
         self.threshold_ = classification_threshold(
             self.projected_means_, self.projected_variances_, self.class_prior_
         )
-        self.calibration_scaler_ = StandardScaler().fit(
-            self.decision_function(X).reshape(-1, 1)
-        )
-        self.calibrator_ = LogisticRegression(C=1e6, solver="lbfgs", max_iter=1000).fit(
-            self.calibration_scaler_.transform(
-                self.decision_function(X).reshape(-1, 1)
-            ),
-            y,
-        )
+        # 7. Learn how to turn scores into probabilities, using training data only.
+        training_scores = self.decision_function(X).reshape(-1, 1)
+        self.calibration_scaler_ = StandardScaler().fit(training_scores)
+        scaled_scores = self.calibration_scaler_.transform(training_scores)
+        self.calibrator_ = LogisticRegression(C=1e6, solver="lbfgs", max_iter=1000)
+        self.calibrator_.fit(scaled_scores, y)
         return self
 
     def transform(self, X):
-        """Return the learned one-dimensional quadratic projection Q(X)."""
+        """Turn each row of features into one score: Q(X) = X'omega X - 2 delta'X."""
         check_is_fitted(self, "omega_")
         X = self.scaler_.transform(validate_data(self, X, reset=False, dtype=float))
         return (
@@ -190,14 +189,17 @@ class QUADROClassifier(ClassifierMixin, BaseEstimator):
         ).reshape(-1, 1)
 
     def decision_function(self, X):
+        """Measure how far each row is from the class cutoff; positive means class 1."""
         check_is_fitted(self, "threshold_")
         return self.threshold_ - self.transform(X).ravel()
 
     def predict(self, X):
+        """Return one class label for each row."""
         check_is_fitted(self, "classes_")
         return self.classes_[(self.decision_function(X) > 0).astype(int)]
 
     def predict_proba(self, X):
+        """Return the two class probabilities for each row."""
         check_is_fitted(self, "calibrator_")
         return self.calibrator_.predict_proba(
             self.calibration_scaler_.transform(

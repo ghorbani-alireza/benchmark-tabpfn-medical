@@ -1,17 +1,26 @@
 import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
+from pathlib import Path
 import numpy as np
 from sklearn.calibration import calibration_curve
 
 from .config import PLOTS_PATH
 
 
-# Single source of truth for colours and method order.
+# All plots use this order. QUADRO belongs with the classical methods,
+# immediately after CatBoost. TabPFN versions stay together within foundations.
+CLASSICAL_METHODS = ['L-SLR', 'SLR', 'RandomForest', 'XGBoost', 'CatBoost', 'Quadro']
+TABPFN_METHODS = ['TabPFN_v25', 'TabPFN_v26', 'TabPFN_v3', 'TabPFN_v35']
+FOUNDATION_METHODS = TABPFN_METHODS + ['EXAONE', 'TabICL-V2']
+METHOD_ORDER = CLASSICAL_METHODS + FOUNDATION_METHODS
+
 COLOR_SCHEME = {
     'L-SLR':        '#2ca02c',
     'SLR':          '#ff7f0e',
     'RandomForest': '#d62728',
     'XGBoost':      '#9467bd',
     'CatBoost':     '#8c564b',
+    'Quadro':       '#bcbd22',
     'TabPFN_v25':   '#c6dbef',
     'TabPFN_v26':   '#6baed6',
     'TabPFN_v3':    '#2171b5',
@@ -20,8 +29,102 @@ COLOR_SCHEME = {
     'TabICL-V2':    '#000000',
 }
 
+# Only display labels change; saved result column names stay the same.
+DISPLAY_NAMES = {
+    'Quadro': 'QUADRO',
+    'TabPFN_v25': 'TabPFN 2.5', 'TabPFN_v26': 'TabPFN 2.6',
+    'TabPFN_v3': 'TabPFN 3', 'TabPFN_v35': 'TabPFN 3.5',
+}
+
+
+def _grouped_axis(ax, methods, frames=False):
+    """Separate method groups with spacing and either labeled frames or light shading."""
+    positions = np.arange(1, len(methods) + 1, dtype=float)
+    classical_count = sum(method in CLASSICAL_METHODS for method in methods)
+    tabpfn_count = sum(method in TABPFN_METHODS for method in methods)
+    # Add a gap before foundations, and a smaller gap after the TabPFN subgroup.
+    if classical_count and classical_count < len(methods):
+        positions[classical_count:] += 0.8
+    if tabpfn_count and classical_count + tabpfn_count < len(methods):
+        positions[classical_count + tabpfn_count:] += 0.4
+
+    # Keep both group borders and their labels inside the plotting area.
+    outer_top = 0.96
+    inner_top = 0.90
+
+    for title, members, background, border in [
+        ('Classical methods', CLASSICAL_METHODS, '#eeeeee', '#a6611a'),
+        ('Foundation models', FOUNDATION_METHODS, '#eaf2fa', '#2166ac'),
+    ]:
+        group_positions = [x for x, method in zip(positions, methods) if method in members]
+        if not group_positions:
+            continue
+        left, right = min(group_positions) - 0.45, max(group_positions) + 0.45
+        if frames:
+            # A thin outline groups methods without adding colour behind the data.
+            ax.add_patch(Rectangle(
+                (left, 0.015), right - left, outer_top - 0.015,
+                transform=ax.get_xaxis_transform(), fill=False,
+                edgecolor=border, linewidth=1.1, clip_on=True, zorder=2,
+            ))
+            # Black text remains readable without relying on colour alone.
+            ax.text((left + right) / 2, outer_top, title,
+                    transform=ax.get_xaxis_transform(), ha='center', va='center',
+                    fontsize=9, fontweight='bold', color='#222222', clip_on=True,
+                    bbox=dict(facecolor='white', edgecolor='none', pad=1.5), zorder=5)
+        else:
+            ax.axvspan(left, right, color=background, zorder=0)
+            ax.annotate(title, xy=((left + right) / 2, 1), xycoords=ax.get_xaxis_transform(),
+                        xytext=(0, 32), textcoords='offset points', ha='center', va='bottom',
+                        fontsize=9, fontweight='bold', annotation_clip=False)
+
+    tabpfn_positions = [x for x, method in zip(positions, methods) if method in TABPFN_METHODS]
+    if tabpfn_positions:
+        left, right = min(tabpfn_positions) - 0.39, max(tabpfn_positions) + 0.39
+        if frames:
+            # A thinner dashed frame shows the TabPFN subgroup inside foundations.
+            ax.add_patch(Rectangle(
+                (left, 0.03), right - left, inner_top - 0.03,
+                transform=ax.get_xaxis_transform(), fill=False,
+                edgecolor='#2166ac', linewidth=0.85, linestyle='--',
+                clip_on=True, zorder=2,
+            ))
+            ax.text((left + right) / 2, inner_top, 'TabPFN',
+                    transform=ax.get_xaxis_transform(), ha='center', va='center',
+                    fontsize=9, color='#222222', clip_on=True,
+                    bbox=dict(facecolor='white', edgecolor='none', pad=1.5), zorder=5)
+        else:
+            ax.plot([left, left, right, right], [1.003, 1.01, 1.01, 1.003],
+                    transform=ax.get_xaxis_transform(), color='#2171b5', clip_on=False)
+            ax.annotate('TabPFN', xy=((left + right) / 2, 1), xycoords=ax.get_xaxis_transform(),
+                        xytext=(0, 14), textcoords='offset points', ha='center', va='bottom',
+                        fontsize=9, color='#2171b5', annotation_clip=False)
+    return positions
+
+
+def _grouped_legend(fig, handles):
+    """Use the same classical/foundation/TabPFN grouping for curve and scatter legends."""
+    sections = [
+        ('Classical methods', CLASSICAL_METHODS, 0.25, 3),
+        ('Foundation models\nTabPFN', TABPFN_METHODS, 0.66, 2),
+        ('Foundation models\nOther', ['EXAONE', 'TabICL-V2'], 0.91, 1),
+    ]
+    for title, methods, position, columns in sections:
+        available = [method for method in methods if method in handles]
+        if not available:
+            continue
+        legend = fig.legend(
+            handles=[handles[method] for method in available],
+            labels=[DISPLAY_NAMES.get(method, method) for method in available],
+            title=title, loc='lower center', bbox_to_anchor=(position, 0.01),
+            ncol=min(columns, len(available)), fontsize=9, title_fontsize=10,
+            frameon=False,
+        )
+        legend.get_title().set_fontweight('bold')
+
 
 def _title(setting, labels):
+    """Use the supplied setting label, or the setting ID when no label is provided."""
     return labels.get(str(setting), str(setting)) if labels else str(setting)
 
 
@@ -30,8 +133,12 @@ def _title(setting, labels):
 # ─────────────────────────────────────────────────────────────────────
 def plot_roc_curves_grid(errors_dict, settings_to_show, labels=None,
                          dir=PLOTS_PATH, figsize=(12, 10), save_path=None):
+    """Draw the average ROC curve for each model, with one panel per setting.
+    
+    Interpolate each repetition onto a common false-positive-rate grid before averaging.
+    """
     color_scheme = COLOR_SCHEME
-    models = list(color_scheme.keys())
+    models = METHOD_ORDER
 
     n_settings = len(settings_to_show)
     ncols = 2 if n_settings >= 2 else 1
@@ -78,26 +185,30 @@ def plot_roc_curves_grid(errors_dict, settings_to_show, labels=None,
     for idx in range(n_settings, len(axes)):
         axes[idx].set_visible(False)
 
-    fig.legend(handles=list(legend_handles.values()),
-               labels=list(legend_handles.keys()),
-               loc='lower center', bbox_to_anchor=(0.5, 0.03),
-               ncol=len(legend_handles), fontsize=10, frameon=True)
-
-    plt.suptitle('Average ROC Curves', fontsize=14, y=1.02)
-    plt.tight_layout()
-    plt.subplots_adjust(bottom=0.08)
+    _grouped_legend(fig, legend_handles)
+    fig.suptitle('Average ROC Curves', fontsize=14, y=0.99)
+    plt.tight_layout(rect=[0, 0.18, 1, 0.97])
     if save_path:
-        plt.savefig(dir + save_path, dpi=300, bbox_inches='tight')
-    plt.show()
+        plt.savefig(Path(dir) / save_path, dpi=300, bbox_inches='tight')
+    if plt.get_backend().lower() != 'agg':
+        plt.show()
 
 
 # ─────────────────────────────────────────────────────────────────────
 # Boxplots (MSE / AUC / Brier / any scalar metric)
 # ─────────────────────────────────────────────────────────────────────
 def plot_boxplots_grid(errors_dict, settings_to_show, metric='MSE', labels=None,
-                       dir=PLOTS_PATH, figsize=(12, 10), save_path=None):
+                       dir=PLOTS_PATH, figsize=(12, 10), save_path=None, *, group_frames=True,
+                       bayes_auc=None, show_bayes_auc=True):
+    """Compare a scalar measure across repetitions, with two setting panels per row.
+    
+    Group classical methods first, followed by foundation models and their TabPFN subgroup.
+    Use group_frames=False for the earlier shaded-group style.
+    Pass a setting-to-reference dictionary as bayes_auc for AUC plots.
+    The reference line is on by default; show_bayes_auc=False hides it.
+    """
     color_scheme = COLOR_SCHEME
-    models = list(color_scheme.keys())
+    models = METHOD_ORDER
 
     n_settings = len(settings_to_show)
     ncols = 2 if n_settings >= 2 else 1
@@ -111,16 +222,20 @@ def plot_boxplots_grid(errors_dict, settings_to_show, metric='MSE', labels=None,
         ax = axes[idx]
         df = errors_dict[setting]
 
-        data_to_plot, positions, colors, xtick_labels = [], [], [], []
-        for i, model in enumerate(models):
+        data_to_plot, colors, shown_methods = [], [], []
+        for model in models:
             col_name = f'{model}_{metric}'
             if col_name not in df.columns:
                 continue
             data_to_plot.append(df[col_name].dropna())
-            positions.append(i + 1)
             colors.append(color_scheme[model])
-            xtick_labels.append(model)
+            shown_methods.append(model)
 
+        if not shown_methods:
+            ax.set_visible(False)
+            continue
+        positions = _grouped_axis(ax, shown_methods, frames=group_frames)
+        xtick_labels = [DISPLAY_NAMES.get(model, model) for model in shown_methods]
         bp = ax.boxplot(data_to_plot, positions=positions, widths=0.6,
                         patch_artist=True, showmeans=False,
                         medianprops=dict(linewidth=1.5, color='black'))
@@ -128,10 +243,24 @@ def plot_boxplots_grid(errors_dict, settings_to_show, metric='MSE', labels=None,
             patch.set_facecolor(color)
             patch.set_alpha(0.7)
 
+        # A population reference, not another fitted model or another box.
+        if metric.upper() == 'AUC' and show_bayes_auc and bayes_auc and setting in bayes_auc:
+            reference = bayes_auc[setting]
+            value = reference['auc']
+            prefix = 'Bayes AUC ≈' if reference.get('mc_se', 0) > 0 else 'Bayes AUC ='
+            ax.axhline(value, color='black', linestyle='--', linewidth=1.3,
+                       label=f'{prefix} {value:.3f}', zorder=4)
+            # Place the label just above the line, aligned to the right edge.
+            ax.annotate(f'{prefix} {value:.3f}', xy=(0.99, value),
+                        xycoords=ax.get_yaxis_transform(), xytext=(0, 4),
+                        textcoords='offset points', ha='right', va='bottom',
+                        fontsize=9, bbox=dict(facecolor='white', edgecolor='none', alpha=0.8),
+                        zorder=5)
+
         ax.set_xticks(positions)
         ax.set_xticklabels(xtick_labels, rotation=25, ha='right', fontsize=11)
         ax.set_ylabel(metric, fontsize=12)
-        ax.set_title(_title(setting, labels), fontsize=12)
+        ax.set_title(_title(setting, labels), fontsize=12, pad=14 if group_frames else 54)
         ax.grid(axis='y', alpha=0.3)
 
         if metric.upper() == 'MSE':
@@ -142,14 +271,22 @@ def plot_boxplots_grid(errors_dict, settings_to_show, metric='MSE', labels=None,
 
     plt.tight_layout()
     if save_path:
-        plt.savefig(dir + save_path, dpi=300, bbox_inches='tight')
-    plt.show()
+        plt.savefig(Path(dir) / save_path, dpi=300, bbox_inches='tight')
+    if plt.get_backend().lower() != 'agg':
+        plt.show()
 
 
 def plot_boxplots_grid_lands(errors_dict, settings_to_show, metric='MSE', labels=None,
-                             dir=PLOTS_PATH, figsize=(12, 10), save_path=None):
+                             dir=PLOTS_PATH, figsize=(12, 10), save_path=None, *, group_frames=True,
+                       bayes_auc=None, show_bayes_auc=True):
+    """Draw grouped boxplots with four panels per row when there are at least four settings.
+
+    Use group_frames=False for the earlier shaded-group style.
+    Pass a setting-to-reference dictionary as bayes_auc for AUC plots.
+    The reference line is on by default; show_bayes_auc=False hides it.
+    """
     color_scheme = COLOR_SCHEME
-    models = list(color_scheme.keys())
+    models = METHOD_ORDER
 
     n_settings = len(settings_to_show)
     ncols = 4 if n_settings >= 4 else 1
@@ -163,16 +300,20 @@ def plot_boxplots_grid_lands(errors_dict, settings_to_show, metric='MSE', labels
         ax = axes[idx]
         df = errors_dict[setting]
 
-        data_to_plot, positions, colors, xtick_labels = [], [], [], []
-        for i, model in enumerate(models):
+        data_to_plot, colors, shown_methods = [], [], []
+        for model in models:
             col_name = f'{model}_{metric}'
             if col_name not in df.columns:
                 continue
             data_to_plot.append(df[col_name].dropna())
-            positions.append(i + 1)
             colors.append(color_scheme[model])
-            xtick_labels.append(model)
+            shown_methods.append(model)
 
+        if not shown_methods:
+            ax.set_visible(False)
+            continue
+        positions = _grouped_axis(ax, shown_methods, frames=group_frames)
+        xtick_labels = [DISPLAY_NAMES.get(model, model) for model in shown_methods]
         bp = ax.boxplot(data_to_plot, positions=positions, widths=0.6,
                         patch_artist=True, showmeans=False,
                         medianprops=dict(linewidth=1.5, color='black'))
@@ -180,10 +321,24 @@ def plot_boxplots_grid_lands(errors_dict, settings_to_show, metric='MSE', labels
             patch.set_facecolor(color)
             patch.set_alpha(0.7)
 
+        # A population reference, not another fitted model or another box.
+        if metric.upper() == 'AUC' and show_bayes_auc and bayes_auc and setting in bayes_auc:
+            reference = bayes_auc[setting]
+            value = reference['auc']
+            prefix = 'Bayes AUC ≈' if reference.get('mc_se', 0) > 0 else 'Bayes AUC ='
+            ax.axhline(value, color='black', linestyle='--', linewidth=1.3,
+                       label=f'{prefix} {value:.3f}', zorder=4)
+            # Place the label just above the line, aligned to the right edge.
+            ax.annotate(f'{prefix} {value:.3f}', xy=(0.99, value),
+                        xycoords=ax.get_yaxis_transform(), xytext=(0, 4),
+                        textcoords='offset points', ha='right', va='bottom',
+                        fontsize=9, bbox=dict(facecolor='white', edgecolor='none', alpha=0.8),
+                        zorder=5)
+
         ax.set_xticks(positions)
         ax.set_xticklabels(xtick_labels, rotation=25, ha='right')
         ax.set_ylabel(metric)
-        ax.set_title(_title(setting, labels))
+        ax.set_title(_title(setting, labels), pad=14 if group_frames else 54)
         ax.grid(axis='y', alpha=0.3, color='white')
 
     for idx in range(n_settings, len(axes)):
@@ -191,9 +346,10 @@ def plot_boxplots_grid_lands(errors_dict, settings_to_show, metric='MSE', labels
 
     plt.tight_layout()
     if save_path:
-        plt.savefig(dir + save_path, dpi=300, bbox_inches='tight',
+        plt.savefig(Path(dir) / save_path, dpi=300, bbox_inches='tight',
                     facecolor=fig.get_facecolor())
-    plt.show()
+    if plt.get_backend().lower() != 'agg':
+        plt.show()
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -202,8 +358,12 @@ def plot_boxplots_grid_lands(errors_dict, settings_to_show, metric='MSE', labels
 def plot_calibration_grid(errors_dict, settings_to_show, labels=None, n_bins=10,
                           strategy='uniform', dir=PLOTS_PATH,
                           figsize=(12, 10), save_path=None):
+    """Compare predicted probabilities with observed event frequencies.
+    
+    Pool the saved test predictions across repetitions and use the chosen probability bins.
+    """
     color_scheme = COLOR_SCHEME
-    models = list(color_scheme.keys())
+    models = METHOD_ORDER
 
     n_settings = len(settings_to_show)
     ncols = 2 if n_settings >= 2 else 1
@@ -242,15 +402,13 @@ def plot_calibration_grid(errors_dict, settings_to_show, labels=None, n_bins=10,
     for idx in range(n_settings, len(axes)):
         axes[idx].set_visible(False)
 
-    plt.tight_layout(rect=[0, 0.1, 1, 1])
-    fig.legend(handles=list(legend_handles.values()),
-               labels=list(legend_handles.keys()),
-               loc='lower center', bbox_to_anchor=(0.5, 0.02),
-               ncol=len(legend_handles), fontsize=10, frameon=True)
+    _grouped_legend(fig, legend_handles)
+    plt.tight_layout(rect=[0, 0.18, 1, 1])
 
     if save_path:
-        plt.savefig(dir + save_path, dpi=300, bbox_inches='tight')
-    plt.show()
+        plt.savefig(Path(dir) / save_path, dpi=300, bbox_inches='tight')
+    if plt.get_backend().lower() != 'agg':
+        plt.show()
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -258,8 +416,9 @@ def plot_calibration_grid(errors_dict, settings_to_show, labels=None, n_bins=10,
 # ─────────────────────────────────────────────────────────────────────
 def plot_brier_vs_auc_grid(errors_dict, settings_to_show, labels=None,
                            dir=PLOTS_PATH, figsize=(12, 10), save_path=None):
+    """Plot each model's mean AUC against its mean Brier score, with one panel per setting."""
     color_scheme = COLOR_SCHEME
-    models = list(color_scheme.keys())
+    models = METHOD_ORDER
 
     n_settings = len(settings_to_show)
     ncols = 2 if n_settings >= 2 else 1
@@ -293,16 +452,14 @@ def plot_brier_vs_auc_grid(errors_dict, settings_to_show, labels=None,
     for idx in range(n_settings, len(axes)):
         axes[idx].set_visible(False)
 
-    fig.tight_layout(rect=[0, 0, 1, 0.92])
-    fig.suptitle('Brier vs. AUC', fontsize=14, y=0.98)
-    fig.legend(handles=list(legend_handles.values()),
-               labels=list(legend_handles.keys()),
-               loc='upper center', bbox_to_anchor=(0.5, 0.96),
-               ncol=len(legend_handles), fontsize=10, frameon=True)
+    _grouped_legend(fig, legend_handles)
+    fig.suptitle('Brier vs. AUC', fontsize=14, y=0.99)
+    fig.tight_layout(rect=[0, 0.18, 1, 0.97])
 
     if save_path:
-        plt.savefig(dir + save_path, dpi=300, bbox_inches='tight')
-    plt.show()
+        plt.savefig(Path(dir) / save_path, dpi=300, bbox_inches='tight')
+    if plt.get_backend().lower() != 'agg':
+        plt.show()
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -310,8 +467,9 @@ def plot_brier_vs_auc_grid(errors_dict, settings_to_show, labels=None,
 # ─────────────────────────────────────────────────────────────────────
 def plot_runtime_barplot_simple(errors_dict, settings_to_show, labels=None,
                                 dir=PLOTS_PATH, figsize=(10, 6), save_path=None):
+    """Compare mean runtime per model, pooling saved timings from the selected settings."""
     color_scheme = COLOR_SCHEME
-    methods = list(color_scheme.keys())
+    methods = METHOD_ORDER
 
     runtime_data = {m: [] for m in methods}
     for setting in settings_to_show:
@@ -321,27 +479,30 @@ def plot_runtime_barplot_simple(errors_dict, settings_to_show, labels=None,
             if col in df.columns:
                 runtime_data[m].extend(df[col].dropna().tolist())
 
-    means = [np.mean(runtime_data[m]) if runtime_data[m] else np.nan
-             for m in methods]
+    methods = [method for method in methods if runtime_data[method]]
+    means = [np.mean(runtime_data[method]) for method in methods]
 
     fig, ax = plt.subplots(figsize=figsize)
-    x = np.arange(len(methods))
+    x = _grouped_axis(ax, methods)
     ax.bar(x, means, color=[color_scheme[m] for m in methods],
            edgecolor='black', linewidth=0.8, alpha=0.85)
 
     for i, mean in enumerate(means):
         if not np.isnan(mean):
-            ax.text(i, mean, f'{mean:.2f}s', ha='center', va='bottom',
+            ax.text(x[i], mean, f'{mean:.2f}s', ha='center', va='bottom',
                     fontsize=10, fontweight='bold')
 
     ax.set_xticks(x)
-    ax.set_xticklabels(methods, rotation=25, ha='right', fontsize=12)
+    ax.set_xticklabels([DISPLAY_NAMES.get(method, method) for method in methods],
+                       rotation=25, ha='right', fontsize=11)
     ax.set_ylabel('Average runtime (seconds)', fontsize=13)
-    ax.set_title('Mean Runtime per Method', fontsize=14, pad=15)
+    ax.set_title('Mean Runtime per Method', fontsize=14, pad=54)
+    ax.margins(y=0.15)
     ax.grid(axis='y', alpha=0.3, color='white')
     plt.tight_layout()
 
     if save_path:
-        plt.savefig(dir + save_path, dpi=300, bbox_inches='tight',
+        plt.savefig(Path(dir) / save_path, dpi=300, bbox_inches='tight',
                     facecolor=fig.get_facecolor())
-    plt.show()
+    if plt.get_backend().lower() != 'agg':
+        plt.show()

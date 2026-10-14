@@ -2,7 +2,7 @@
 from pathlib import Path
 
 # src/config.py → parent.parent → project root
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 REQUIREMENTS_PATH = PROJECT_ROOT / "requirements.txt"
 IO_DIR            = PROJECT_ROOT / "io"

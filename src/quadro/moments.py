@@ -5,7 +5,9 @@ from scipy.stats import kendalltau
 
 
 def catoni_mean(X):
-    """Coordinatewise Catoni M-estimates using Section 4.1's influence function.
+    """Estimate each feature's average while reducing the influence of outliers.
+
+    Uses coordinatewise Catoni estimates from Section 4.1.
 
     The variance bound is three times the largest sample marginal variance.
     Confidence is 1/max(n,d)^2, capped for samples too small for its formula.
@@ -34,7 +36,9 @@ def catoni_mean(X):
 
 
 def _nearest_psd_max_norm(matrix, tol=1e-7, max_iter=2000):
-    """Solve min_{A PSD} ||A-matrix||_max by ADMM (paper equation 11).
+    """Adjust a covariance matrix so it has no negative eigenvalues.
+
+    Solve min_{A PSD} ||A-matrix||_max by ADMM (paper equation 11).
 
     Moreau's identity gives the max-norm proximal map using an L1-ball projection.
     """
@@ -83,7 +87,7 @@ def _nearest_psd_max_norm(matrix, tol=1e-7, max_iter=2000):
 
 
 def estimate_moments(X, robust=True, ridge=1e-4):
-    """Estimate class mean and PSD covariance using Sections 4.1–4.2."""
+    """Estimate a class's feature averages and covariance, optionally resisting outliers."""
     n, d = X.shape
     if not robust:
         mean = X.mean(axis=0)
@@ -113,7 +117,9 @@ def estimate_moments(X, robust=True, ridge=1e-4):
 
 
 def clime_precision(covariance, regularization=0.1):
-    """Columnwise CLIME linear programs, then smaller-magnitude symmetrization.
+    """Estimate a sparse inverse covariance matrix using CLIME.
+
+    Solve one linear program per column, then make the result symmetric.
 
     Solve min ||w||1 subject to ||covariance*w-e_j||inf <= regularization.
     """
@@ -138,7 +144,7 @@ def clime_precision(covariance, regularization=0.1):
 
 
 def estimate_kurtosis(X, mean, covariance, precision="clime", clime_lambda=0.1):
-    """Section 4.3 radial moment formula, with CLIME or a covariance inverse."""
+    """Estimate tail heaviness from observations' distances to their class center."""
     centered = X - mean
     inverse = (
         clime_precision(covariance, clime_lambda)
@@ -151,7 +157,10 @@ def estimate_kurtosis(X, mean, covariance, precision="clime", clime_lambda=0.1):
 
 
 def projected_moments(omega, delta, mean, covariance, gamma):
-    """Proposition 2.1: mean and variance of Q(X)=X'omega X-2delta'X."""
+    """Calculate the average and variance of the quadratic score within one class.
+
+    Uses Proposition 2.1 for Q(X)=X'omega X-2delta'X.
+    """
     product = omega @ covariance
     trace = np.trace(product)
     shifted = omega @ mean - delta

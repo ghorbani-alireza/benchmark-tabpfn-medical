@@ -6,7 +6,7 @@ from .config import TABLES_PATH
 
 METHODS = ['L-SLR', 'SLR', 'RandomForest', 'XGBoost', 'CatBoost',
            'TabPFN_v25', 'TabPFN_v26', 'TabPFN_v3', 'TabPFN_v35',
-           'EXAONE', 'TabICL-V2']
+           'EXAONE', 'TabICL-V2', 'Quadro']
 
 # Scalar metrics only. FPR/TPR/Probas are list-valued — used by plots.
 METRICS = ['AUC', 'MSE', 'Brier', 'Time', 'CalSlope', 'CalIntercept']
@@ -19,6 +19,7 @@ def build_measures_table(errors_dict, metrics=None, filename='table.csv',
     """rows=(Setting, Metric), cols=method, values='mean ± std'.
 
     errors_dict : {setting_id: pd.DataFrame}
+    Set filename=None to display the styled table without saving a CSV.
     """
     if not errors_dict:
         print(f"⚠️ no data to build {filename} — skipping")
@@ -42,8 +43,9 @@ def build_measures_table(errors_dict, metrics=None, filename='table.csv',
             rows.append(row)
 
     table = pd.DataFrame(rows).set_index(['Setting', 'Metric'])
-    table.to_csv(os.path.join(tables_dir, filename))
-    print(f"✓ {filename}")
+    if filename is not None:
+        table.to_csv(os.path.join(tables_dir, filename))
+        print(f"✓ {filename}")
     return table.style.apply(_style_best, axis=1)
 
 
@@ -84,7 +86,12 @@ def _style_best(row):
     vals = {}
     for col in row.index:
         try:
-            vals[col] = float(row[col].split(' ± ')[0])
+            value = float(row[col].split(' ± ')[0])
+            if metric == 'CalSlope':
+                value = abs(value - 1.0)
+            elif metric == 'CalIntercept':
+                value = abs(value)
+            vals[col] = value
         except Exception:
             pass
     if not vals:

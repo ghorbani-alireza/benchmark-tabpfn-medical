@@ -7,7 +7,7 @@ from sklearn.exceptions import ConvergenceWarning
 
 
 def smooth_gradient(means, covariances, gamma, kappa, omega, delta):
-    """Gradient of the shared unpenalized projected-variance objective."""
+    """Calculate derivatives used to update the quadratic and linear weights."""
     quadratic, linear = np.zeros_like(omega), np.zeros_like(delta)
     for weight, mean, covariance in zip((1.0, kappa), means, covariances):
         shifted = omega @ mean - delta
@@ -33,7 +33,9 @@ def solve_quadro(
     max_iter=2000,
     tol=1e-5,
 ):
-    """Minimize L0+kappa*L1+lambda_Q*|omega|1+lambda_L*|delta|1.
+    """Find sparse quadratic and linear weights using the ADMM algorithm.
+
+    Minimize L0+kappa*L1+lambda_Q*|omega|1+lambda_L*|delta|1.
 
     Constrain E[Q|0]-E[Q|1]=1 and omega=omega.T. This sign convention
     gives class 1 a lower projection; the Rayleigh objective is sign invariant.
@@ -43,6 +45,8 @@ def solve_quadro(
     d = len(means[0])
     size = d * d + d
 
+    # The numerical solver uses one long vector; these two helpers convert
+    # between that vector and the model's matrix/vector weights.
     def unpack(vector):
         omega = vector[: d * d].reshape(d, d)
         return (omega + omega.T) / 2, vector[d * d :]
@@ -108,6 +112,7 @@ def solve_quadro(
     dual = np.zeros(size)
     primal = np.zeros(size)
     converged = False
+    # Repeatedly update the weights, shrink small terms, and check convergence.
     for iteration in range(1, max_iter + 1):
         previous = sparse.copy()
         unconstrained = linear_solve(rho * (sparse - dual), primal)

@@ -1,0 +1,308 @@
+[
+  {
+    "category": "TqdmWarning",
+    "message": "IProgress not found. Please update jupyter and ipywidgets. See https://ipywidgets.readthedocs.io/en/stable/user_install.html",
+    "filename": "/home/alireza.ghorbani/github/benchmark-tabpfn-medical/.venv/lib/python3.13/site-packages/tqdm/auto.py",
+    "lineno": 21
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1031
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1032
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 933
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 934
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1031
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1032
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1031
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1032
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1031
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1032
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1031
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1032
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1031
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1032
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1031
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1032
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1031
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1032
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1031
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1032
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1031
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1032
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1031
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1032
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1031
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1032
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1031
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1032
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1031
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1032
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1031
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1032
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1031
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1032
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1031
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1032
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1031
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1032
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1031
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1032
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1031
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1032
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1031
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1032
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1031
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1032
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1031
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1032
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1031
+  },
+  {
+    "category": "DeprecationWarning",
+    "message": "Importing from 'tabpfn.model.loading' is deprecated and will be removed in a future release; import from 'tabpfn.model_loading' instead.",
+    "filename": "/home/alireza.ghorbani/.local/share/uv/python/cpython-3.13.16-linux-x86_64-gnu/lib/python3.13/inspect.py",
+    "lineno": 1032
+  }
+]

@@ -1,0 +1,4 @@
+Source: https://github.com/PriorLabs/TabPFN
+Tag used by setup_vendor.py: v7.1.1
+Local package: tabpfn_v26
+Modification: package imports renamed, including saved-estimator loading.

@@ -3,6 +3,10 @@ import numpy as np
 
 
 def load_echo_data(path):
+	"""Read the echocardiography data and create numeric predictors, binary outcomes, and patient IDs.
+	
+	Class 0 contains the specified normal LV values; class 1 contains the other observed values.
+	"""
 	data1_path = path + "data1_echo_notes.pkl"
 	df1 = pd.read_pickle(data1_path)
 
@@ -52,6 +56,10 @@ def load_echo_data(path):
 
 def load_glucose_data(path):
 
+	"""Read glucose data and pair each insulin event with the next glucose reading for that patient.
+	
+	Return numeric predictors, whether the next glucose is in the chosen range, and patient IDs.
+	"""
 	data2_path = path + "data2_blood_glucose_management.pkl"
 	df2 = pd.read_pickle(data2_path)
 
@@ -123,6 +131,10 @@ def load_glucose_data(path):
 
 
 def load_blood_gas_data(path):
+	"""Read blood-gas data and predict whether SaO2 is below the chosen threshold.
+	
+	Remove excluded columns and return numeric predictors, binary outcomes, and patient IDs.
+	"""
 	data3_path = path + "data3_blood_gas_oximetry.pkl" 
 	df3 = pd.read_pickle(data3_path)
 

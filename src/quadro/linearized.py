@@ -27,7 +27,9 @@ def solve_quadro_alm(
     tol=1e-5,
     max_inner_iter=2000,
 ):
-    """Solve the unit-contrast L1 problem with a linearized augmented Lagrangian.
+    """Alternative solver: update quadratic and linear weights in alternating steps.
+
+    Solve the unit-contrast L1 problem with a linearized augmented Lagrangian.
 
     Use true block Hessian bounds (including 8*Sigma in the delta block),
     matrix-free eigenvalue estimation, bounded inner/outer loops, and the
