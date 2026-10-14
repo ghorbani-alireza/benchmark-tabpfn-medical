@@ -40,3 +40,7 @@ catboost_info/
 
 # Optional pilot results are local checks, separate from paper results.
 /io/sim_results/pilot_setting2/
+
+/io/sim_results/warnings/
+
+/io/real_data_results/warnings/
