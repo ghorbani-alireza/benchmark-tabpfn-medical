@@ -172,54 +172,21 @@ code, and all license files in Git. The following are generated and ignored:
 | Folder | What it contains |
 |---|---|
 | `.venv/` | Installed Python and dependencies; recreated with `uv sync` |
-| `benchmark_tabpfn_medical.egg-info/` | Installation metadata for this project |
-| `__pycache__/` | Cached Python bytecode; recreated automatically |
-| `.ipynb_checkpoints/` | Jupyter's automatic notebook backup copies |
 
 Do not delete `.venv` while using it. The metadata and caches can be regenerated;
 you do not need to publish them. Ignore rules do not remove files already tracked
 by Git.
 
-Run the lightweight checks with:
-
-```bash
-uv run --locked python -m unittest discover -s tests
-```
-
-The tests replace real models with simple mock models. They check quiet output,
-warning saving, EXAONE exclusion, notebook pilot settings, and complete array
-saving/loading. They do not download checkpoints or validate the paper's model
-performance. Each test explains the behavior it checks.
 
 ## Bayes AUC reference on simulation boxplots
 
-Bayes AUC uses the known class distributions in `settings.py`, not fitted models.
-The score is the log density of the positive class minus that of the negative
-class. We estimate the probability that an independent positive observation has
-a higher score than an independent negative observation, with half credit for ties.
-The default uses 100,000 independent pairs and seed 314159. `mc_se` is its Monte
-Carlo standard error; an approximate numerical 95% interval is AUC ± 1.96 × mc_se.
-This is a numerical estimate of the population optimum, not an exact ceiling for
-individual finite-test-sample results. Equal-covariance normal settings use the
-exact formula. Class proportions and training sample size do not change this AUC.
-For t settings, the covariance-to-shape conversion matches the simulation code.
-
-The notebook keeps `SHOW_BAYES_AUC = True`. Change it to `False` to hide the line.
-Both boxplot functions accept `bayes_auc=references, show_bayes_auc=False` to hide
-it; the default is `True`. Lines appear only for AUC, when a reference is supplied.
-The pilot displays the estimate and numerical uncertainty separately from model results.
-New synthetic runs save the reference and full distribution parameters in `.meta.json`.
-Reports reuse the saved reference, or calculate it from complete saved parameters:
+Bayes AUC uses the known class distributions in `settings.py`. The notebook keeps `SHOW_BAYES_AUC = True`. Change it to `False` to hide the line.
 
 ```bash
 uv run --locked python scripts/run_analysis.py report --results io/sim_results/main
 # Same report, without the reference line:
 uv run --locked python scripts/run_analysis.py report --results io/sim_results/main --no-bayes-auc
 ```
-
-Older metadata missing means or covariances cannot supply a reliable reference;
-those panels omit the line. Real-data resampling also omits it because the true
-class distributions are unknown. No benchmark models need to be rerun to report
-results with complete distribution metadata. For a more precise estimate, call
+For a more precise estimate, call
 `calculate_bayes_auc(cfg, n_pairs=1_000_000, seed=314159)` and pass its returned
 dictionary under the relevant setting key to the boxplot function.
