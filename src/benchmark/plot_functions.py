@@ -106,25 +106,65 @@ def _grouped_axis(ax, methods, frames=False):
     return positions
 
 
+def _pad_group_frames(ax):
+    """Keep the plotted data inside the nested frames, including whiskers and outliers."""
+    frames = [patch for patch in ax.patches if isinstance(patch, Rectangle)]
+    if not frames:
+        return
+    bottom = max(frame.get_y() for frame in frames) + 0.015
+    top = min(frame.get_y() + frame.get_height() for frame in frames) - 0.015
+    data_low, data_high = ax.dataLim.intervaly
+    low, high = ax.get_ylim()
+    if not np.all(np.isfinite([data_low, data_high])):
+        return
+    # Expand the current limits enough to fit data between the innermost borders.
+    span = max(high - low, (data_high - data_low) / (top - bottom),
+               (data_high - low) / top, (high - data_low) / (1 - bottom))
+    low = min(low, data_low - bottom * span)
+    ax.set_ylim(low, low + span)
+
+
 def _grouped_legend(fig, handles):
-    """Use the same classical/foundation/TabPFN grouping for curve and scatter legends."""
+    """Center two method columns and return the top of the legend area."""
     sections = [
-        ('Classical methods', CLASSICAL_METHODS, 0.25, 3),
-        ('Foundation models\nTabPFN', TABPFN_METHODS, 0.66, 2),
-        ('Foundation models\nOther', ['EXAONE', 'TabICL-V2'], 0.91, 1),
+        ('Classical methods', CLASSICAL_METHODS),
+        ('Foundation models', FOUNDATION_METHODS),
     ]
-    for title, methods, position, columns in sections:
+    legends = []
+    bottom = 0.045 if 'Bayes ROC' in handles else 0.01
+    for title, methods in sections:
         available = [method for method in methods if method in handles]
         if not available:
             continue
         legend = fig.legend(
             handles=[handles[method] for method in available],
             labels=[DISPLAY_NAMES.get(method, method) for method in available],
-            title=title, loc='lower center', bbox_to_anchor=(position, 0.01),
-            ncol=min(columns, len(available)), fontsize=9, title_fontsize=10,
+            title=title, loc='lower center', bbox_to_anchor=(0.5, bottom),
+            ncol=1, fontsize=9, title_fontsize=10,
             frameon=False,
         )
         legend.get_title().set_fontweight('bold')
+        legends.append(legend)
+
+    if legends:
+        # Measure the actual widths so missing methods still leave a centered legend.
+        fig.draw_without_rendering()
+        widths = [legend.get_window_extent().transformed(fig.transFigure.inverted()).width
+                  for legend in legends]
+        gap = 0.025
+        left = (1 - sum(widths) - gap * (len(legends) - 1)) / 2
+        for legend, width in zip(legends, widths):
+            legend.set_bbox_to_anchor((left + width / 2, bottom))
+            left += width + gap
+
+    if 'Bayes ROC' in handles:
+        legends.append(fig.legend(
+            handles=[handles['Bayes ROC']], loc='lower center',
+            bbox_to_anchor=(0.5, 0.01), fontsize=9, frameon=False,
+        ))
+    fig.draw_without_rendering()
+    return max((legend.get_window_extent().transformed(fig.transFigure.inverted()).y1
+                for legend in legends), default=0)
 
 
 def _title(setting, labels):
@@ -186,13 +226,9 @@ def plot_roc_curves_grid(errors_dict, settings_to_show, labels=None,
         if show_bayes_roc and bayes_auc and setting in bayes_auc:
             reference = bayes_auc[setting]
             if all(key in reference for key in ('fpr', 'tpr')):
-                ax.plot(reference['fpr'], reference['tpr'], color='black',
-                        linestyle='--', linewidth=2, label='Bayes ROC', zorder=4)
-                # Label the curve directly, separate from the fitted-method legend.
-                height = np.interp(0.6, reference['fpr'], reference['tpr'])
-                ax.annotate('Bayes ROC', xy=(0.6, height), xytext=(0, -14),
-                            textcoords='offset points', ha='center', va='top', fontsize=9,
-                            bbox=dict(facecolor='white', edgecolor='none', alpha=0.8), zorder=5)
+                line, = ax.plot(reference['fpr'], reference['tpr'], color='black',
+                                linestyle='--', linewidth=2, label='Bayes ROC', zorder=4)
+                legend_handles.setdefault('Bayes ROC', line)
 
         ax.plot([0, 1], [0, 1], linestyle='--', color='gray', linewidth=1)
         ax.set_xlim([0, 1]); ax.set_ylim([0, 1])
@@ -204,9 +240,9 @@ def plot_roc_curves_grid(errors_dict, settings_to_show, labels=None,
     for idx in range(n_settings, len(axes)):
         axes[idx].set_visible(False)
 
-    _grouped_legend(fig, legend_handles)
+    legend_top = _grouped_legend(fig, legend_handles)
     fig.suptitle('Average ROC Curves', fontsize=14, y=0.99)
-    plt.tight_layout(rect=[0, 0.18, 1, 0.97])
+    plt.tight_layout(rect=[0, legend_top + 0.02, 1, 0.97])
     if save_path:
         plt.savefig(Path(dir) / save_path, dpi=300, bbox_inches='tight')
     if plt.get_backend().lower() != 'agg':
@@ -284,6 +320,8 @@ def plot_boxplots_grid(errors_dict, settings_to_show, metric='MSE', labels=None,
 
         if metric.upper() == 'MSE':
             ax.set_ylim(0.0, 0.6)
+        if group_frames:
+            _pad_group_frames(ax)
 
     for idx in range(n_settings, len(axes)):
         axes[idx].set_visible(False)
@@ -359,6 +397,8 @@ def plot_boxplots_grid_lands(errors_dict, settings_to_show, metric='MSE', labels
         ax.set_ylabel(metric)
         ax.set_title(_title(setting, labels), pad=14 if group_frames else 54)
         ax.grid(axis='y', alpha=0.3, color='white')
+        if group_frames:
+            _pad_group_frames(ax)
 
     for idx in range(n_settings, len(axes)):
         axes[idx].set_visible(False)
@@ -421,8 +461,8 @@ def plot_calibration_grid(errors_dict, settings_to_show, labels=None, n_bins=10,
     for idx in range(n_settings, len(axes)):
         axes[idx].set_visible(False)
 
-    _grouped_legend(fig, legend_handles)
-    plt.tight_layout(rect=[0, 0.18, 1, 1])
+    legend_top = _grouped_legend(fig, legend_handles)
+    plt.tight_layout(rect=[0, legend_top + 0.02, 1, 1])
 
     if save_path:
         plt.savefig(Path(dir) / save_path, dpi=300, bbox_inches='tight')
@@ -471,9 +511,9 @@ def plot_brier_vs_auc_grid(errors_dict, settings_to_show, labels=None,
     for idx in range(n_settings, len(axes)):
         axes[idx].set_visible(False)
 
-    _grouped_legend(fig, legend_handles)
+    legend_top = _grouped_legend(fig, legend_handles)
     fig.suptitle('Brier vs. AUC', fontsize=14, y=0.99)
-    fig.tight_layout(rect=[0, 0.18, 1, 0.97])
+    fig.tight_layout(rect=[0, legend_top + 0.02, 1, 0.97])
 
     if save_path:
         plt.savefig(Path(dir) / save_path, dpi=300, bbox_inches='tight')
