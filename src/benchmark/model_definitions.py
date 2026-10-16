@@ -10,7 +10,7 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 import numpy as np
 
 
-from sklearn.metrics import roc_curve, balanced_accuracy_score, roc_auc_score, mean_squared_error
+from sklearn.metrics import roc_curve, balanced_accuracy_score, roc_auc_score, mean_squared_error, make_scorer
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GridSearchCV
@@ -215,6 +215,7 @@ def run_xgboost(X_train, X_test, y_train, y_test, X_train_sub, y_train_sub, X_va
         learning_rate=0.1,
         eval_metric='logloss',
         tree_method='hist',
+        device='cpu',
         n_jobs=1,
         random_state=random_state
     ) # the same as random forests and catboost
@@ -260,16 +261,21 @@ def run_catboost(X_train, X_test, y_train, y_test, X_train_sub, y_train_sub, X_v
         iterations=100,
         depth=6,
         learning_rate=0.1,
-        thread_count=1, # like n_job
+        thread_count=1, # training threads
+        task_type='CPU',
         verbose=0,
         random_seed=random_state
     )# the same as possible
+    def validation_auc(estimator, X, y):
+        """CatBoost scoring must also request one prediction thread."""
+        return roc_auc_score(y, estimator.predict_proba(X, thread_count=1)[:, 1])
+
     param_grid = {'iterations': [50, 100, 200], 'depth': [3, 5, 6]}
     grid_search = GridSearchCV(
         cb,
         param_grid,
         cv=[(np.arange(len(X_train_sub)), np.arange(len(X_train_sub), len(X_train_sub) + len(X_val)))],
-        scoring='roc_auc',
+        scoring=validation_auc,
         n_jobs=1
     )
     grid_search.fit(np.vstack((X_train_sub, X_val)), np.hstack((y_train_sub, y_val)))
@@ -279,8 +285,8 @@ def run_catboost(X_train, X_test, y_train, y_test, X_train_sub, y_train_sub, X_v
     best_model.fit(X_train, y_train)
 
     # predict/ compute metrics
-    pred = best_model.predict(X_test)
-    proba = best_model.predict_proba(X_test)[:, 1]
+    pred = best_model.predict(X_test, thread_count=1)
+    proba = best_model.predict_proba(X_test, thread_count=1)[:, 1]
     fpr, tpr, _ = roc_curve(y_test, proba)
     brier = np.mean((proba - y_test) ** 2)
     return (
@@ -299,45 +305,46 @@ def run_catboost(X_train, X_test, y_train, y_test, X_train_sub, y_train_sub, X_v
 def run_quadro(X_train, X_test, y_train, y_test,
                X_train_sub, y_train_sub, X_val, y_val,
                random_state=None, *, metrics=None, solver="admm"):
-    """Choose QUADRO penalties using validation data, then evaluate on test data.
+    """Choose QUADRO penalties with GridSearchCV, then evaluate on test data.
 
     random_state is accepted like the other runners; QUADRO's fit is deterministic.
     """
     from quadro import QUADROClassifier
     from threadpoolctl import threadpool_limits
 
-    # The same five choices as before. Each pair is:
-    # (penalty for quadratic terms, penalty for linear terms).
+    # Keep the five existing penalty pairs, rather than taking every combination.
     penalty_pairs = [(0.0, 0.0), (0.01, 0.01), (0.01, 0.1), (0.1, 0.1), (0.1, 1.0)]
+    param_grid = [
+        {'lambda_quadratic': [quadratic], 'lambda_linear': [linear]}
+        for quadratic, linear in penalty_pairs
+    ]
+    # The same held-out validation split used by the other classical runners.
+    validation_split = [(
+        np.arange(len(X_train_sub)),
+        np.arange(len(X_train_sub), len(X_train_sub) + len(X_val)),
+    )]
+    # Preserve the previous probability-based AUC criterion. The default
+    # 'roc_auc' scorer would prefer QUADRO's uncalibrated decision_function.
+    scoring = make_scorer(roc_auc_score, response_method="predict_proba")
 
-    # 1. Try each choice on the inner training data; compare validation AUC.
     with threadpool_limits(limits=1):
-        best_auc = -np.inf
-        best_quadratic, best_linear = penalty_pairs[0]
-        for quadratic_penalty, linear_penalty in penalty_pairs:
-            candidate = QUADROClassifier(
-                lambda_quadratic=quadratic_penalty,
-                lambda_linear=linear_penalty,
-                solver=solver,
-            )
-            candidate.fit(X_train_sub, y_train_sub)
-            validation_proba = candidate.predict_proba(X_val)[:, 1]
-            validation_auc = roc_auc_score(y_val, validation_proba)
-            if validation_auc > best_auc:
-                best_auc = validation_auc
-                best_quadratic = quadratic_penalty
-                best_linear = linear_penalty
-
-        # 2. Refit the winning choice using all training data.
-        model = QUADROClassifier(
-            lambda_quadratic=best_quadratic,
-            lambda_linear=best_linear,
-            solver=solver,
+        grid_search = GridSearchCV(
+            QUADROClassifier(solver=solver),
+            param_grid,
+            cv=validation_split,
+            scoring=scoring,
+            n_jobs=1,
+            refit=True,
+            error_score="raise",
         )
-        model.fit(X_train, y_train)
+        grid_search.fit(
+            np.vstack((X_train_sub, X_val)),
+            np.hstack((y_train_sub, y_val)),
+        )
+        # GridSearchCV already refits the winner on all supplied training rows.
+        model = grid_search.best_estimator_
 
-        # 3. Predict the untouched test data and calculate the same measures
-        # returned by every other model runner.
+        # Preserve QUADRO's analytic class cutoff and calibrated probabilities.
         pred = model.predict(X_test)
         proba = model.predict_proba(X_test)[:, 1]
         fpr, tpr, _ = roc_curve(y_test, proba)
@@ -441,6 +448,7 @@ def run_exaone(X_train, X_test, y_train, y_test, random_state=None):
     with single_threaded_torch(n_threads=1):
         clf = EXAONETabularClassifier.from_pretrained(
             device="cpu",
+            ensemble_count=1,
             seed=random_state,
         )
         clf.fit(X_train, y_train)
@@ -465,6 +473,7 @@ def run_tabicl(X_train, X_test, y_train, y_test, random_state=None):
     clf = TabICLClassifier(
         device="cpu",
         n_jobs=1,
+        n_estimators=1,
         verbose=False,
         random_state=random_state if random_state is not None else 42,
     )

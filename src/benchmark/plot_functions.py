@@ -51,6 +51,10 @@ def _grouped_axis(ax, methods, frames=False):
     # Keep both group borders and their labels inside the plotting area.
     outer_top = 0.96
     inner_top = 0.90
+    # Put labels on the lower borders, with a separate level for TabPFN.
+    height_points = max(ax.get_window_extent().height * 72 / ax.figure.dpi, 1)
+    outer_bottom = max(0.025, 10 / height_points)
+    inner_bottom = outer_bottom + 20 / height_points
 
     for title, members, background, border in [
         ('Classical methods', CLASSICAL_METHODS, '#eeeeee', '#a6611a'),
@@ -63,12 +67,12 @@ def _grouped_axis(ax, methods, frames=False):
         if frames:
             # A thin outline groups methods without adding colour behind the data.
             ax.add_patch(Rectangle(
-                (left, 0.015), right - left, outer_top - 0.015,
+                (left, outer_bottom), right - left, outer_top - outer_bottom,
                 transform=ax.get_xaxis_transform(), fill=False,
                 edgecolor=border, linewidth=1.1, clip_on=True, zorder=2,
             ))
             # Black text remains readable without relying on colour alone.
-            ax.text((left + right) / 2, outer_top, title,
+            ax.text((left + right) / 2, outer_bottom, title,
                     transform=ax.get_xaxis_transform(), ha='center', va='center',
                     fontsize=9, fontweight='bold', color='#222222', clip_on=True,
                     bbox=dict(facecolor='white', edgecolor='none', pad=1.5), zorder=5)
@@ -84,12 +88,12 @@ def _grouped_axis(ax, methods, frames=False):
         if frames:
             # A thinner dashed frame shows the TabPFN subgroup inside foundations.
             ax.add_patch(Rectangle(
-                (left, 0.03), right - left, inner_top - 0.03,
+                (left, inner_bottom), right - left, inner_top - inner_bottom,
                 transform=ax.get_xaxis_transform(), fill=False,
                 edgecolor='#2166ac', linewidth=0.85, linestyle='--',
                 clip_on=True, zorder=2,
             ))
-            ax.text((left + right) / 2, inner_top, 'TabPFN',
+            ax.text((left + right) / 2, inner_bottom, 'TabPFN',
                     transform=ax.get_xaxis_transform(), ha='center', va='center',
                     fontsize=9, color='#222222', clip_on=True,
                     bbox=dict(facecolor='white', edgecolor='none', pad=1.5), zorder=5)
@@ -132,10 +136,14 @@ def _title(setting, labels):
 # ROC curves
 # ─────────────────────────────────────────────────────────────────────
 def plot_roc_curves_grid(errors_dict, settings_to_show, labels=None,
-                         dir=PLOTS_PATH, figsize=(12, 10), save_path=None):
+                         dir=PLOTS_PATH, figsize=(12, 10), save_path=None, *,
+                         bayes_auc=None, show_bayes_roc=True):
     """Draw the average ROC curve for each model, with one panel per setting.
     
     Interpolate each repetition onto a common false-positive-rate grid before averaging.
+    Supply distribution-based references as bayes_auc to add a dashed Bayes ROC.
+    show_bayes_roc=False hides it. Monte Carlo curves estimate the population
+    optimum; individual finite-test-sample curves can cross this reference.
     """
     color_scheme = COLOR_SCHEME
     models = METHOD_ORDER
@@ -174,6 +182,17 @@ def plot_roc_curves_grid(errors_dict, settings_to_show, labels=None,
                             color=color_scheme[method],
                             label=f"{method} (AUC={mean_auc:.3f})")
             legend_handles.setdefault(method, line)
+
+        if show_bayes_roc and bayes_auc and setting in bayes_auc:
+            reference = bayes_auc[setting]
+            if all(key in reference for key in ('fpr', 'tpr')):
+                ax.plot(reference['fpr'], reference['tpr'], color='black',
+                        linestyle='--', linewidth=2, label='Bayes ROC', zorder=4)
+                # Label the curve directly, separate from the fitted-method legend.
+                height = np.interp(0.6, reference['fpr'], reference['tpr'])
+                ax.annotate('Bayes ROC', xy=(0.6, height), xytext=(0, -14),
+                            textcoords='offset points', ha='center', va='top', fontsize=9,
+                            bbox=dict(facecolor='white', edgecolor='none', alpha=0.8), zorder=5)
 
         ax.plot([0, 1], [0, 1], linestyle='--', color='gray', linewidth=1)
         ax.set_xlim([0, 1]); ax.set_ylim([0, 1])
@@ -252,7 +271,7 @@ def plot_boxplots_grid(errors_dict, settings_to_show, metric='MSE', labels=None,
                        label=f'{prefix} {value:.3f}', zorder=4)
             # Place the label just above the line, aligned to the right edge.
             ax.annotate(f'{prefix} {value:.3f}', xy=(0.99, value),
-                        xycoords=ax.get_yaxis_transform(), xytext=(0, 4),
+                        xycoords=ax.get_yaxis_transform(), xytext=(0, 9),
                         textcoords='offset points', ha='right', va='bottom',
                         fontsize=9, bbox=dict(facecolor='white', edgecolor='none', alpha=0.8),
                         zorder=5)
@@ -330,7 +349,7 @@ def plot_boxplots_grid_lands(errors_dict, settings_to_show, metric='MSE', labels
                        label=f'{prefix} {value:.3f}', zorder=4)
             # Place the label just above the line, aligned to the right edge.
             ax.annotate(f'{prefix} {value:.3f}', xy=(0.99, value),
-                        xycoords=ax.get_yaxis_transform(), xytext=(0, 4),
+                        xycoords=ax.get_yaxis_transform(), xytext=(0, 9),
                         textcoords='offset points', ha='right', va='bottom',
                         fontsize=9, bbox=dict(facecolor='white', edgecolor='none', alpha=0.8),
                         zorder=5)

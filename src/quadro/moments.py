@@ -136,6 +136,8 @@ def clime_precision(covariance, regularization=0.1):
             b_ub=np.r_[target + regularization, -target + regularization],
             bounds=(0, None),
             method="highs",
+            # HiGHS owns a separate thread pool; BLAS limits do not control it.
+            options={"threads": 1},
         )
         if not solution.success:
             raise RuntimeError(f"QUADRO CLIME precision fit failed: {solution.message}")

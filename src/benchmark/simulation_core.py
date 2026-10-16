@@ -2,7 +2,8 @@ import numpy as np
 import time
 from tqdm import tqdm
 from scipy.stats import multivariate_t
-from joblib import Parallel, delayed
+from joblib import Parallel, delayed, parallel_config
+from pathlib import Path
 from scipy.special import logit
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
@@ -25,6 +26,7 @@ from .model_definitions import (
     run_tabicl
 )
 from .utils import capture_output
+from .execution import initialize_worker, run_logged_iteration
 from . import config
 
 #parallel functions are after this function
@@ -63,6 +65,7 @@ def simulation(n, mu, sigma1, sigma2, df=None, dist="Normal", iter=100, g_seed=2
     
     Return the results and captured warnings. include_exaone=False is used for the notebook pilot.
     """
+    initialize_worker()
     n1_tr, n2_tr = n['n1_tr'], n['n2_tr']
     n1_te, n2_te = n['n1_te'], n['n2_te']
     mu1, mu2 = mu['mu1'], mu['mu2']
@@ -205,11 +208,12 @@ def simulation(n, mu, sigma1, sigma2, df=None, dist="Normal", iter=100, g_seed=2
 # parallel simulation function
 
 # part 1 - function to evaluate on simulated data in parallel
-def evaluate_on_sim_data(n, mu, sigma1, sigma2, df=None, dist="Normal", iter=100, g_seed=2025, *, include_exaone=False, warnings_file=None):
-    """Run Monte Carlo repetitions in parallel threads and combine their results.
+def evaluate_on_sim_data(n, mu, sigma1, sigma2, df=None, dist="Normal", iter=100, g_seed=2025, *, include_exaone=False, warnings_file=None, n_jobs=10):
+    """Run Monte Carlo repetitions in separate processes with one thread each.
     
     Each repetition generates its own training and test samples. The progress bar counts completed results.
     """
+    initialize_worker()
     n1_tr, n2_tr = n['n1_tr'], n['n2_tr']
     n1_te, n2_te = n['n1_te'], n['n2_te']
     mu1, mu2 = mu['mu1'], mu['mu2']
@@ -259,15 +263,26 @@ def evaluate_on_sim_data(n, mu, sigma1, sigma2, df=None, dist="Normal", iter=100
     
     if not include_exaone:
         errors = {key: values for key, values in errors.items() if not key.startswith("EXAONE_")}
-    with capture_output(warnings_file, config.SIM_RESULTS_DIR) as (captured_warnings, progress):
-        # parallel - cahnge n_job for ibe
-        results = Parallel(n_jobs=10, prefer="threads", verbose=0, return_as="generator")(
-            delayed(_single_sim_iteration)(
-                i, n1_tr, n2_tr, n1_te, n2_te, mu1, mu2, sigma1, sigma2, df, dist, g_seed, include_exaone)
+    if n_jobs < 1:
+        raise ValueError("n_jobs must be positive")
+    if warnings_file is None:
+        warnings_file = Path(config.SIM_RESULTS_DIR) / "warnings" / f"{time.time_ns()}.warnings.json"
+    worker_dir = Path(warnings_file).with_suffix(".workers")
+    with capture_output(warnings_file, config.SIM_RESULTS_DIR) as (captured_warnings, progress), parallel_config(
+        backend="loky", inner_max_num_threads=1, initializer=initialize_worker,
+    ):
+        results = Parallel(n_jobs=n_jobs, verbose=0, return_as="generator")(
+            delayed(run_logged_iteration)(
+                _single_sim_iteration, worker_dir / f"iteration_{i + 1}.warnings.json",
+                i, n1_tr, n2_tr, n1_te, n2_te, mu1, mu2, sigma1, sigma2,
+                df, dist, g_seed, include_exaone,
+            )
             for i in range(iter)
         )
-    
-        for res in tqdm(results, total=iter, desc="Simulated-data iterations", file=progress):
+
+        for res, records, log_path in tqdm(results, total=iter, desc="Simulated-data iterations", file=progress):
+            captured_warnings.extend(records)
+            print(Path(log_path).read_text(), end="")
             errors['y_test_all'].append(res['y_test'])
             for key, prefix in [
                 ('L-SLR', 'L-SLR_'),

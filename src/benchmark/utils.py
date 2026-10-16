@@ -244,8 +244,18 @@ def read_bayes_auc(files):
         if not meta_path.exists():
             continue
         meta = json.loads(meta_path.read_text())
-        if meta.get('bayes_auc') is not None:
-            references[name] = meta['bayes_auc']
-        elif all(key in meta for key in ('mu', 'sigma1', 'sigma2', 'dist')):
+        saved = meta.get('bayes_auc')
+        complete = all(key in meta for key in ('mu', 'sigma1', 'sigma2', 'dist'))
+        if saved is not None:
+            references[name] = saved
+            if complete and not all(key in saved for key in ('fpr', 'tpr')):
+                # Older references contain AUC only. Recover the curve from the
+                # saved distributions, keeping the original AUC and uncertainty.
+                curve = calculate_bayes_auc(
+                    meta, n_pairs=saved.get('n_pairs') or 100_000,
+                    seed=saved.get('seed') if saved.get('seed') is not None else 314159,
+                )
+                references[name] = {**saved, **{key: curve[key] for key in ('fpr', 'tpr', 'roc_auc')}}
+        elif complete:
             references[name] = calculate_bayes_auc(meta)
     return references

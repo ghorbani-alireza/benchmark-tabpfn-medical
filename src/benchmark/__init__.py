@@ -1,4 +1,6 @@
-# src/__init__.py
+# Set thread limits before importing data loaders or numerical model code.
+from .execution import initialize_worker
+initialize_worker()
 from .data_loader import load_echo_data, load_glucose_data, load_blood_gas_data
 from .settings import SETTINGS, SENSITIVITY, calculate_bayes_auc
 from .simulation_core import simulation

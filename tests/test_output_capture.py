@@ -5,6 +5,7 @@ Every function named test_* is a separate check run by unittest. The helper
 functions below supply mock models so tests finish quickly without credentials,
 checkpoint downloads, or medical datasets.
 """
+import ast
 import contextlib
 import importlib.util
 import io
@@ -16,6 +17,7 @@ import tempfile
 import types
 import unittest
 import warnings
+from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
@@ -85,12 +87,19 @@ class OutputTests(unittest.TestCase):
             stdout, stderr = io.StringIO(), io.StringIO()
             old_hook = warnings.showwarning
             old_handlers = logging.getLogger().handlers[:]
-            with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            # These workflow checks use serial task execution with mock models.
+            # Real process isolation and logging have separate integration tests.
+            def serial_tasks(**options):
+                return lambda tasks: (fn(*args, **kwargs) for fn, args, kwargs in tasks)
+
+            module = resampling if real else simulation
+            with patch.object(module, 'Parallel', side_effect=serial_tasks), contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
                 common = dict(n={'n1_tr': 10, 'n2_tr': 10, 'n1_te': 4, 'n2_te': 4},
                               iter=repetitions, warnings_file=path)
                 if real:
                     result = resampling.evaluate_on_real_data(
-                        X=np.arange(120).reshape(60, 2), y=np.tile([0, 1], 30), **common)
+                        X=np.arange(120).reshape(60, 2), y=np.tile([0, 1], 30),
+                        include_exaone=include_exaone, **common)
                 else:
                     fn = simulation.evaluate_on_sim_data if parallel else simulation.simulation
                     result = fn(mu={'mu1': np.zeros(2), 'mu2': np.ones(2)},
@@ -146,7 +155,12 @@ class OutputTests(unittest.TestCase):
         """Run the actual pilot cell with mock models, checking both saving choices."""
         notebook = json.loads((SOURCE.parents[1] / 'notebooks/run_analysis.ipynb').read_text())
         pilot = next(''.join(cell['source']) for cell in notebook['cells']
-                     if cell['cell_type'] == 'code' and 'include_exaone=False' in ''.join(cell['source']))
+                     if cell['cell_type'] == 'code' and 'pilot_bayes =' in ''.join(cell['source']))
+        call = next(node for node in ast.walk(ast.parse(pilot))
+                    if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+                    and node.func.id == 'simulation')
+        options = {item.arg: ast.literal_eval(item.value) for item in call.keywords
+                   if item.arg in ('iter', 'include_exaone')}
         for save_output in [False, True]:
             with self.subTest(save_output=save_output), tempfile.TemporaryDirectory() as temporary:
                 previous_dir = config.SIM_RESULTS_DIR
@@ -165,8 +179,8 @@ class OutputTests(unittest.TestCase):
                 try:
                     with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
                         exec(compile(pilot, 'notebook-pilot', 'exec'), namespace)
-                    self.assertEqual(len(namespace['errors']['y_test_all']), 5)
-                    self.assertNotIn('EXAONE_AUC', namespace['errors'])
+                    self.assertEqual(len(namespace['errors']['y_test_all']), options['iter'])
+                    self.assertEqual('EXAONE_AUC' in namespace['errors'], options['include_exaone'])
                     result_file = Path(temporary) / 'pilot_setting2/setting2_pilot.csv'
                     self.assertEqual(result_file.is_file(), save_output)
                 finally:

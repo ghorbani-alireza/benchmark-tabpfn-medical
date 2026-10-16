@@ -98,9 +98,11 @@ These commands run all model runners, excluding EXAONE.
 
 The main simulation command uses `simulation()`, the normal sequential loop.
 Only the sensitivity command uses `evaluate_on_sim_data()`, which runs Monte
-Carlo repetitions in parallel with 10 workers. Settings run one after another;
+Carlo repetitions in parallel with 10 worker processes, each using one computation
+thread. Real-data resampling uses the same process policy. Settings run one after another;
 models within each repetition run sequentially. The progress bar counts completed
-repetitions. The notebook's calls to `simulation()` also use the sequential loop.
+repetitions. The notebook pilot and main simulation stay sequential; its
+sensitivity cell uses the same ten-process evaluation function.
 
 Main simulation: all eight baseline settings:
 
@@ -136,7 +138,37 @@ Real-data resampling currently samples rows;
 patient identifiers are not used to separate training and testing patients.
 
 
-## 3. Bayes AUC reference on simulation boxplots
+### CPU and thread policy
+
+Importing `benchmark` sets OpenMP, OpenBLAS, MKL, BLIS, NumExpr, and PyTorch
+computation limits to one thread. Import it before model computations; restart
+an existing notebook kernel to load this policy. The startup settings override
+inherited numerical-library thread counts so each method uses the same limit.
+CatBoost prediction and validation scoring explicitly use one thread; QUADRO's
+HiGHS solver is also restricted separately. Foundation models use CPU and one
+ensemble member.
+
+Main simulation stays sequential. Sensitivity and resampling use Joblib's `loky`
+process backend with 10 workers by default. Each process initializes PyTorch once
+and restricts numerical-library pools to one thread. Set `--jobs 2` on those
+terminal commands if you need fewer workers; Python calls accept `n_jobs=2`.
+Process workers each hold their own models, so ten workers need more memory than
+one sequential run. Model workers and their inner grid searches stay sequential.
+
+The code controls computation threads, not CPU affinity or server allocations.
+Request one CPU for main simulation and ten CPUs for the default parallel runs
+through the server's scheduler. Use its affinity options if strict CPU placement
+is required; ten workers alone do not guarantee ten distinct physical cores.
+Parallel wall times include resource contention; use sequential runs for isolated
+per-method runtime comparisons.
+
+The parent displays the progress bar. Every parallel iteration saves private
+warnings and logs in a companion `*.workers/` directory. Completed workers'
+messages and warnings are also collected into the main `.log` and warnings JSON.
+If a worker fails, check its individual files as well: it may not have returned
+its warnings to the parent yet. Keep `--output` directories new on retries.
+
+## 3. Bayes AUC and ROC references
 
 Bayes AUC uses the known class distributions in `settings.py`. The notebook keeps 
 `SHOW_BAYES_AUC = True`. Change it to `False` to hide the line.
@@ -150,6 +182,36 @@ For a more precise estimate, call
 `calculate_bayes_auc(cfg, n_pairs=1_000_000, seed=314159)` and pass its returned
 dictionary under the relevant setting key to the boxplot function.
 
+
+The same known class distributions provide a **Bayes ROC** reference, shown as a
+black dashed curve with a label beside it. It uses the true log likelihood ratio
+of the positive and negative classes, independently of the fitted methods.
+This is the optimal population ROC for the specified distributions; see this
+[likelihood-ratio ROC reference](https://arxiv.org/abs/2202.01956).
+AUC alone is not enough to reconstruct an ROC curve: the distribution parameters
+are needed. Equal-covariance normal settings use the analytic ROC; other settings
+use 100,000 independent observations per class with seed 314159. The numerical
+ROC is stored on a compact FPR grid. It estimates the population optimum, so
+individual test-sample curves can cross it. No Bayes reference is calculated
+for real datasets with unknown class distributions.
+
+The notebook keeps `SHOW_BAYES_ROC = True`; set it to `False` to hide the curve.
+The plotting function accepts `bayes_auc=references, show_bayes_roc=False` for the
+same purpose. In terminal reports, use:
+
+```bash
+uv run --locked python scripts/run_analysis.py report --results io/sim_results/main
+# Hide only the Bayes ROC (the boxplot AUC line remains on):
+uv run --locked python scripts/run_analysis.py report --results io/sim_results/main --no-bayes-roc
+```
+
+New Bayes references save `fpr`, `tpr`, and `roc_auc` alongside the existing AUC
+and its Monte Carlo standard error. `roc_auc` is the empirical ROC area and can
+differ slightly from the independent-pair `auc` estimate; both estimate the same
+population quantity. Saved results with complete distribution metadata can have
+the curve calculated at report time without rerunning models. Older references
+keep their saved AUC value. If distributions are missing and no curve was saved,
+the ROC reference is omitted.
 
 ## 4. Tables and plots from saved results
 

@@ -2,12 +2,14 @@ import time
 from tqdm import tqdm
 import numpy as np
 
-from joblib import Parallel, delayed
+from joblib import Parallel, delayed, parallel_config
+from pathlib import Path
 from scipy.special import logit
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 
 from .utils import capture_output
+from .execution import initialize_worker, run_logged_iteration
 from . import config
 
 
@@ -139,13 +141,14 @@ def _single_real_iteration(i, X_np, y_np, idx0, idx1,
 
 
 #  part2 - fucntion for all iterations
-def evaluate_on_real_data(X, y, n, iter=100, g_seed = 2025, *, include_exaone=False, warnings_file=None):
+def evaluate_on_real_data(X, y, n, iter=100, g_seed = 2025, *, include_exaone=False, warnings_file=None, n_jobs=10):
     #np.random.seed(g_seed)
 
     """Repeat row-level sampling and model evaluation on an existing dataset.
     
     Check the available class sizes first, run repetitions in parallel, and combine their results.
     """
+    initialize_worker()
     X_np = np.asarray(X, dtype=np.float32)
     y_np = np.asarray(y, dtype=int)
 
@@ -190,17 +193,28 @@ def evaluate_on_real_data(X, y, n, iter=100, g_seed = 2025, *, include_exaone=Fa
         'y_test_all': []
     }
 
-    with capture_output(warnings_file, config.REAL_RESULTS_DIR) as (captured_warnings, progress):
-        # parallel - cahnge n_job for ibe
-        results = Parallel(n_jobs=10, prefer="threads", verbose=0, return_as="generator")(
-            delayed(_single_real_iteration)(
+    if not include_exaone:
+        errors = {key: values for key, values in errors.items() if not key.startswith("EXAONE_")}
+    if n_jobs < 1:
+        raise ValueError("n_jobs must be positive")
+    if warnings_file is None:
+        warnings_file = Path(config.REAL_RESULTS_DIR) / "warnings" / f"{time.time_ns()}.warnings.json"
+    worker_dir = Path(warnings_file).with_suffix(".workers")
+    with capture_output(warnings_file, config.REAL_RESULTS_DIR) as (captured_warnings, progress), parallel_config(
+        backend="loky", inner_max_num_threads=1, initializer=initialize_worker,
+    ):
+        results = Parallel(n_jobs=n_jobs, verbose=0, return_as="generator")(
+            delayed(run_logged_iteration)(
+                _single_real_iteration, worker_dir / f"iteration_{i + 1}.warnings.json",
                 i, X_np, y_np, idx0, idx1,
-                n1_tr, n2_tr, n1_te, n2_te, g_seed
+                n1_tr, n2_tr, n1_te, n2_te, g_seed, include_exaone,
             )
             for i in range(iter)
         )
 
-        for res in tqdm(results, total=iter, desc="Real-data resampling", file=progress):
+        for res, records, log_path in tqdm(results, total=iter, desc="Real-data resampling", file=progress):
+            captured_warnings.extend(records)
+            print(Path(log_path).read_text(), end="")
             errors['y_test_all'].append(res['y_test'])
             for key, prefix in [
                 ('L-SLR', 'L-SLR_'),

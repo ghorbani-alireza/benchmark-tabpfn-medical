@@ -13,7 +13,11 @@ def main():
     parser.add_argument('--output', type=Path, help='New directory for this analysis')
     parser.add_argument('--results', type=Path, help='Saved result directory to report')
     parser.add_argument('--no-bayes-auc', action='store_true', help='Hide the Bayes AUC line in reports')
+    parser.add_argument('--no-bayes-roc', action='store_true', help='Hide the Bayes ROC curve in reports')
+    parser.add_argument('--jobs', type=int, default=10, help='Worker processes for sensitivity/resampling (default: 10)')
     args = parser.parse_args()
+    if args.jobs < 1:
+        parser.error('--jobs must be positive')
     if args.analysis == 'report':
         if args.results is None:
             parser.error('report requires --results')
@@ -41,7 +45,7 @@ def main():
             parser.error('no result CSV files found in --results directory')
         results = load_fixed(files)
         labels = read_labels({name: str(path) for name, path in files.items()})
-        bayes = read_bayes_auc(files) if not args.no_bayes_auc else {}
+        bayes = read_bayes_auc(files) if not (args.no_bayes_auc and args.no_bayes_roc) else {}
         names = list(results)
         table_dir = args.results / 'tables'
         plot_dir = args.results / 'plots'
@@ -51,7 +55,7 @@ def main():
         plots = str(plot_dir) + '/'
         plot_boxplots_grid(results, names, labels=labels, metric='AUC', dir=plots, save_path='auc_box.png', bayes_auc=bayes, show_bayes_auc=not args.no_bayes_auc)
         plot_boxplots_grid_lands(results, names, labels=labels, metric='AUC', dir=plots, save_path='auc_box_landscape.png', bayes_auc=bayes, show_bayes_auc=not args.no_bayes_auc)
-        plot_roc_curves_grid(results, names, labels=labels, dir=plots, save_path='roc.png')
+        plot_roc_curves_grid(results, names, labels=labels, dir=plots, save_path='roc.png', bayes_auc=bayes, show_bayes_roc=not args.no_bayes_roc)
         plot_calibration_grid(results, names, labels=labels, dir=plots, save_path='calibration.png')
         plot_brier_vs_auc_grid(results, names, labels=labels, dir=plots, save_path='brier_auc.png')
         plot_runtime_barplot_simple(results, names, labels=labels, dir=plots, save_path='runtime.png')
@@ -73,10 +77,11 @@ def main():
         for setting_id, cfg in settings.items():
             suffix = '_sensitivity' if args.analysis == 'sensitivity' else ''
             name = f'simulation_setting{setting_id}{suffix}'
+            worker_options = {'n_jobs': args.jobs} if args.analysis == 'sensitivity' else {}
             result = runner(
                 n=cfg['n'], mu=cfg['mu'], sigma1=cfg['sigma1'], sigma2=cfg['sigma2'],
                 dist=cfg['dist'], df=cfg.get('df'), iter=args.repetitions, g_seed=seed,
-                include_exaone=False,
+                include_exaone=False, **worker_options,
                 warnings_file=output / f'{name}.warnings.json',
             )
             # simulation returns (results, warnings); the parallel runner returns results.
@@ -88,6 +93,8 @@ def main():
                          meta={**cfg, 'setting_id': setting_id, 'iter': args.repetitions, 'g_seed': seed,
                                'include_exaone': False,
                                'execution': 'parallel' if args.analysis == 'sensitivity' else 'sequential',
+                               'workers': args.jobs if args.analysis == 'sensitivity' else 1,
+                               'threads_per_worker': 1,
                                'bayes_auc': calculate_bayes_auc(cfg)})
     else:
         # Use the original three real-data loaders and per-class sample sizes.
@@ -102,11 +109,14 @@ def main():
             name = f'realdata_{dataset}'
             errors = evaluate_on_real_data(
                 X, y, sample_sizes, iter=args.repetitions, g_seed=seed,
+                n_jobs=args.jobs, include_exaone=False,
                 warnings_file=output / f'{name}.warnings.json',
             )
             save_outputs(errors, name, output_dir=output, meta={
                 'dataset': dataset, 'n': sample_sizes, 'iter': args.repetitions,
                 'g_seed': seed, 'n_features': int(X.shape[1]), 'n_samples': int(X.shape[0]),
+                'include_exaone': False, 'execution': 'parallel',
+                'workers': args.jobs, 'threads_per_worker': 1,
             })
     print(f'Results saved in {output}')
 

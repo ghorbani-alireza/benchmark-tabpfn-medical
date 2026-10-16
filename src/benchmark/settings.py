@@ -140,10 +140,15 @@ def calculate_bayes_auc(setting, n_pairs=100_000, seed=314159):
     Unequal covariances and t distributions use n_pairs independent pairs.
     The returned mc_se measures numerical Monte Carlo uncertainty, not the
     variation between fitted models. A local seed leaves simulation RNG alone.
-    Equal-covariance Gaussian AUC has a closed form, used without simulation.
+    Equal-covariance Gaussian AUC and ROC use closed forms. Otherwise the ROC
+    uses the same independent draws and true density-ratio scores, interpolated
+    onto a 1,001-point FPR grid for compact storage. roc_auc is the empirical
+    ROC area; it can differ slightly from the independent-pair AUC estimate.
+    Both estimate population quantities, not bounds on individual test samples.
     """
     from scipy.stats import multivariate_normal, multivariate_t, norm
     from threadpoolctl import threadpool_limits
+    from sklearn.metrics import roc_curve, auc as curve_auc
 
     if not isinstance(n_pairs, (int, np.integer)) or n_pairs < 2:
         raise ValueError("n_pairs must be an integer of at least 2")
@@ -156,8 +161,13 @@ def calculate_bayes_auc(setting, n_pairs=100_000, seed=314159):
     if dist == 'Normal' and np.array_equal(covs[0], covs[1]):
         delta = means[1] - means[0]
         distance_squared = delta @ np.linalg.solve(covs[0], delta)
-        return dict(auc=float(norm.cdf(np.sqrt(distance_squared / 2))),
-                    mc_se=0.0, n_pairs=0, seed=None, method='exact Gaussian')
+        fpr = np.linspace(0, 1, 1_001)
+        # At FPR u, the optimal Gaussian test has TPR Phi(Phi^-1(u) + d).
+        tpr = norm.cdf(norm.ppf(fpr) + np.sqrt(distance_squared))
+        exact_auc = float(norm.cdf(np.sqrt(distance_squared / 2)))
+        return dict(auc=exact_auc, mc_se=0.0, n_pairs=0, seed=None,
+                    method='exact Gaussian', fpr=fpr.tolist(), tpr=tpr.tolist(),
+                    roc_auc=exact_auc)
 
     if dist == 't':
         df = setting.get('df')
@@ -170,6 +180,7 @@ def calculate_bayes_auc(setting, n_pairs=100_000, seed=314159):
         distributions = [multivariate_normal(mean=m, cov=c) for m, c in zip(means, covs)]
     rng = np.random.default_rng(seed)
     total = total_squared = 0.0
+    negative_scores, positive_scores = [], []
     # Small batches keep memory use bounded, even for the 100-feature setting.
     with threadpool_limits(limits=1):
         for start in range(0, n_pairs, 2_000):
@@ -178,11 +189,23 @@ def calculate_bayes_auc(setting, n_pairs=100_000, seed=314159):
                                   for d in distributions]
             negative_score = distributions[1].logpdf(negative) - distributions[0].logpdf(negative)
             positive_score = distributions[1].logpdf(positive) - distributions[0].logpdf(positive)
+            negative_scores.append(np.atleast_1d(negative_score))
+            positive_scores.append(np.atleast_1d(positive_score))
             wins = (positive_score > negative_score).astype(float)
             wins += 0.5 * (positive_score == negative_score)
             total += wins.sum()
             total_squared += wins @ wins
     auc = total / n_pairs
     variance = max(0.0, (total_squared - n_pairs * auc**2) / (n_pairs - 1))
+    # Threshold the known likelihood ratio, without fitting any classifier.
+    labels = np.repeat([0, 1], n_pairs)
+    scores = np.concatenate([np.concatenate(negative_scores), np.concatenate(positive_scores)])
+    raw_fpr, raw_tpr, _ = roc_curve(labels, scores)
+    fpr = np.linspace(0, 1, 1_001)
+    tpr = np.interp(fpr, raw_fpr, raw_tpr)
+    # Preserve a possible initial vertical segment and both ROC endpoints.
+    fpr = np.r_[0.0, fpr]
+    tpr = np.r_[0.0, tpr]
     return dict(auc=float(auc), mc_se=float(np.sqrt(variance / n_pairs)),
-                n_pairs=int(n_pairs), seed=int(seed), method='Monte Carlo likelihood ratio')
+                n_pairs=int(n_pairs), seed=int(seed), method='Monte Carlo likelihood ratio',
+                fpr=fpr.tolist(), tpr=tpr.tolist(), roc_auc=float(curve_auc(raw_fpr, raw_tpr)))
