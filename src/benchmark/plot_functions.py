@@ -37,25 +37,16 @@ DISPLAY_NAMES = {
 }
 
 
-def _grouped_axis(ax, methods, frames=False):
-    """Separate method groups with spacing and either labeled frames or light shading."""
+def _grouped_axis(ax, methods, *, style='shaded'):
+    """Separate classical and foundation methods with a gap and optional decoration."""
     positions = np.arange(1, len(methods) + 1, dtype=float)
     classical_count = sum(method in CLASSICAL_METHODS for method in methods)
-    tabpfn_count = sum(method in TABPFN_METHODS for method in methods)
-    # Add a gap before foundations, and a smaller gap after the TabPFN subgroup.
     if classical_count and classical_count < len(methods):
         positions[classical_count:] += 0.8
-    if tabpfn_count and classical_count + tabpfn_count < len(methods):
-        positions[classical_count + tabpfn_count:] += 0.4
 
-    # Keep both group borders and their labels inside the plotting area.
     outer_top = 0.96
-    inner_top = 0.90
-    # Put labels on the lower borders, with a separate level for TabPFN.
     height_points = max(ax.get_window_extent().height * 72 / ax.figure.dpi, 1)
     outer_bottom = max(0.025, 10 / height_points)
-    inner_bottom = outer_bottom + 20 / height_points
-
     for title, members, background, border in [
         ('Classical methods', CLASSICAL_METHODS, '#eeeeee', '#a6611a'),
         ('Foundation models', FOUNDATION_METHODS, '#eaf2fa', '#2166ac'),
@@ -64,14 +55,12 @@ def _grouped_axis(ax, methods, frames=False):
         if not group_positions:
             continue
         left, right = min(group_positions) - 0.45, max(group_positions) + 0.45
-        if frames:
-            # A thin outline groups methods without adding colour behind the data.
+        if style == 'frames':
             ax.add_patch(Rectangle(
                 (left, outer_bottom), right - left, outer_top - outer_bottom,
                 transform=ax.get_xaxis_transform(), fill=False,
                 edgecolor=border, linewidth=1.1, clip_on=True, zorder=2,
             ))
-            # Black text remains readable without relying on colour alone.
             ax.text((left + right) / 2, outer_bottom, title,
                     transform=ax.get_xaxis_transform(), ha='center', va='center',
                     fontsize=9, fontweight='bold', color='#222222', clip_on=True,
@@ -79,35 +68,13 @@ def _grouped_axis(ax, methods, frames=False):
         else:
             ax.axvspan(left, right, color=background, zorder=0)
             ax.annotate(title, xy=((left + right) / 2, 1), xycoords=ax.get_xaxis_transform(),
-                        xytext=(0, 32), textcoords='offset points', ha='center', va='bottom',
+                        xytext=(0, 8), textcoords='offset points', ha='center', va='bottom',
                         fontsize=9, fontweight='bold', annotation_clip=False)
-
-    tabpfn_positions = [x for x, method in zip(positions, methods) if method in TABPFN_METHODS]
-    if tabpfn_positions:
-        left, right = min(tabpfn_positions) - 0.39, max(tabpfn_positions) + 0.39
-        if frames:
-            # A thinner dashed frame shows the TabPFN subgroup inside foundations.
-            ax.add_patch(Rectangle(
-                (left, inner_bottom), right - left, inner_top - inner_bottom,
-                transform=ax.get_xaxis_transform(), fill=False,
-                edgecolor='#2166ac', linewidth=0.85, linestyle='--',
-                clip_on=True, zorder=2,
-            ))
-            ax.text((left + right) / 2, inner_bottom, 'TabPFN',
-                    transform=ax.get_xaxis_transform(), ha='center', va='center',
-                    fontsize=9, color='#222222', clip_on=True,
-                    bbox=dict(facecolor='white', edgecolor='none', pad=1.5), zorder=5)
-        else:
-            ax.plot([left, left, right, right], [1.003, 1.01, 1.01, 1.003],
-                    transform=ax.get_xaxis_transform(), color='#2171b5', clip_on=False)
-            ax.annotate('TabPFN', xy=((left + right) / 2, 1), xycoords=ax.get_xaxis_transform(),
-                        xytext=(0, 14), textcoords='offset points', ha='center', va='bottom',
-                        fontsize=9, color='#2171b5', annotation_clip=False)
     return positions
 
 
 def _pad_group_frames(ax):
-    """Keep the plotted data inside the nested frames, including whiskers and outliers."""
+    """Keep plotted data inside group frames, including whiskers and outliers."""
     frames = [patch for patch in ax.patches if isinstance(patch, Rectangle)]
     if not frames:
         return
@@ -117,22 +84,23 @@ def _pad_group_frames(ax):
     low, high = ax.get_ylim()
     if not np.all(np.isfinite([data_low, data_high])):
         return
-    # Expand the current limits enough to fit data between the innermost borders.
+    # Expand the current limits enough to fit data between the frame borders.
     span = max(high - low, (data_high - data_low) / (top - bottom),
                (data_high - low) / top, (high - data_low) / (1 - bottom))
     low = min(low, data_low - bottom * span)
     ax.set_ylim(low, low + span)
 
 
-def _grouped_legend(fig, handles):
-    """Center two method columns and return the top of the legend area."""
+def _grouped_legend(fig, handles, *, columns=1):
+    """Center reference and method groups and return the top of the legend area."""
     sections = [
-        ('Classical methods', CLASSICAL_METHODS),
-        ('Foundation models', FOUNDATION_METHODS),
+        ('Reference curves', ['Bayes ROC', 'Random guess (AUC = 0.5)'], 1),
+        ('Classical methods', CLASSICAL_METHODS, columns),
+        ('Foundation models', FOUNDATION_METHODS, columns),
     ]
     legends = []
-    bottom = 0.045 if 'Bayes ROC' in handles else 0.01
-    for title, methods in sections:
+    bottom = 0.01
+    for title, methods, section_columns in sections:
         available = [method for method in methods if method in handles]
         if not available:
             continue
@@ -140,8 +108,9 @@ def _grouped_legend(fig, handles):
             handles=[handles[method] for method in available],
             labels=[DISPLAY_NAMES.get(method, method) for method in available],
             title=title, loc='lower center', bbox_to_anchor=(0.5, bottom),
-            ncol=1, fontsize=9, title_fontsize=10,
-            frameon=False,
+            ncol=min(section_columns, len(available)), fontsize=9, title_fontsize=10,
+            frameon=True, fancybox=False, edgecolor='#999999',
+            facecolor='white', framealpha=1, borderpad=0.7,
         )
         legend.get_title().set_fontweight('bold')
         legends.append(legend)
@@ -157,11 +126,6 @@ def _grouped_legend(fig, handles):
             legend.set_bbox_to_anchor((left + width / 2, bottom))
             left += width + gap
 
-    if 'Bayes ROC' in handles:
-        legends.append(fig.legend(
-            handles=[handles['Bayes ROC']], loc='lower center',
-            bbox_to_anchor=(0.5, 0.01), fontsize=9, frameon=False,
-        ))
     fig.draw_without_rendering()
     return max((legend.get_window_extent().transformed(fig.transFigure.inverted()).y1
                 for legend in legends), default=0)
@@ -230,7 +194,9 @@ def plot_roc_curves_grid(errors_dict, settings_to_show, labels=None,
                                 linestyle='--', linewidth=2, label='Bayes ROC', zorder=4)
                 legend_handles.setdefault('Bayes ROC', line)
 
-        ax.plot([0, 1], [0, 1], linestyle='--', color='gray', linewidth=1)
+        line, = ax.plot([0, 1], [0, 1], linestyle='--', color='gray', linewidth=1,
+                        label='Random guess (AUC = 0.5)')
+        legend_handles.setdefault('Random guess (AUC = 0.5)', line)
         ax.set_xlim([0, 1]); ax.set_ylim([0, 1])
         ax.set_xlabel('False Positive Rate', fontsize=12)
         ax.set_ylabel('True Positive Rate', fontsize=12)
@@ -240,7 +206,7 @@ def plot_roc_curves_grid(errors_dict, settings_to_show, labels=None,
     for idx in range(n_settings, len(axes)):
         axes[idx].set_visible(False)
 
-    legend_top = _grouped_legend(fig, legend_handles)
+    legend_top = _grouped_legend(fig, legend_handles, columns=3)
     fig.suptitle('Average ROC Curves', fontsize=14, y=0.99)
     plt.tight_layout(rect=[0, legend_top + 0.02, 1, 0.97])
     if save_path:
@@ -253,12 +219,12 @@ def plot_roc_curves_grid(errors_dict, settings_to_show, labels=None,
 # Boxplots (MSE / AUC / Brier / any scalar metric)
 # ─────────────────────────────────────────────────────────────────────
 def plot_boxplots_grid(errors_dict, settings_to_show, metric='MSE', labels=None,
-                       dir=PLOTS_PATH, figsize=(12, 10), save_path=None, *, group_frames=True,
+                       dir=PLOTS_PATH, figsize=(12, 10), save_path=None, *, group_frames=False,
                        bayes_auc=None, show_bayes_auc=True):
     """Compare a scalar measure across repetitions, with two setting panels per row.
     
-    Group classical methods first, followed by foundation models and their TabPFN subgroup.
-    Use group_frames=False for the earlier shaded-group style.
+    Shade classical and foundation groups with titles above the plot.
+    Use group_frames=True to display group frames inside the plot instead.
     Pass a setting-to-reference dictionary as bayes_auc for AUC plots.
     The reference line is on by default; show_bayes_auc=False hides it.
     """
@@ -289,7 +255,7 @@ def plot_boxplots_grid(errors_dict, settings_to_show, metric='MSE', labels=None,
         if not shown_methods:
             ax.set_visible(False)
             continue
-        positions = _grouped_axis(ax, shown_methods, frames=group_frames)
+        positions = _grouped_axis(ax, shown_methods, style='frames' if group_frames else 'shaded')
         xtick_labels = [DISPLAY_NAMES.get(model, model) for model in shown_methods]
         bp = ax.boxplot(data_to_plot, positions=positions, widths=0.6,
                         patch_artist=True, showmeans=False,
@@ -315,7 +281,7 @@ def plot_boxplots_grid(errors_dict, settings_to_show, metric='MSE', labels=None,
         ax.set_xticks(positions)
         ax.set_xticklabels(xtick_labels, rotation=25, ha='right', fontsize=11)
         ax.set_ylabel(metric, fontsize=12)
-        ax.set_title(_title(setting, labels), fontsize=12, pad=14 if group_frames else 54)
+        ax.set_title(_title(setting, labels), fontsize=12, pad=14 if group_frames else 30)
         ax.grid(axis='y', alpha=0.3)
 
         if metric.upper() == 'MSE':
@@ -334,11 +300,12 @@ def plot_boxplots_grid(errors_dict, settings_to_show, metric='MSE', labels=None,
 
 
 def plot_boxplots_grid_lands(errors_dict, settings_to_show, metric='MSE', labels=None,
-                             dir=PLOTS_PATH, figsize=(12, 10), save_path=None, *, group_frames=True,
+                             dir=PLOTS_PATH, figsize=(12, 10), save_path=None, *, group_frames=False,
                        bayes_auc=None, show_bayes_auc=True):
     """Draw grouped boxplots with four panels per row when there are at least four settings.
 
-    Use group_frames=False for the earlier shaded-group style.
+    Shade classical and foundation groups with titles above the plot.
+    Use group_frames=True to display group frames inside the plot instead.
     Pass a setting-to-reference dictionary as bayes_auc for AUC plots.
     The reference line is on by default; show_bayes_auc=False hides it.
     """
@@ -369,7 +336,7 @@ def plot_boxplots_grid_lands(errors_dict, settings_to_show, metric='MSE', labels
         if not shown_methods:
             ax.set_visible(False)
             continue
-        positions = _grouped_axis(ax, shown_methods, frames=group_frames)
+        positions = _grouped_axis(ax, shown_methods, style='frames' if group_frames else 'shaded')
         xtick_labels = [DISPLAY_NAMES.get(model, model) for model in shown_methods]
         bp = ax.boxplot(data_to_plot, positions=positions, widths=0.6,
                         patch_artist=True, showmeans=False,
@@ -395,7 +362,7 @@ def plot_boxplots_grid_lands(errors_dict, settings_to_show, metric='MSE', labels
         ax.set_xticks(positions)
         ax.set_xticklabels(xtick_labels, rotation=25, ha='right')
         ax.set_ylabel(metric)
-        ax.set_title(_title(setting, labels), pad=14 if group_frames else 54)
+        ax.set_title(_title(setting, labels), pad=14 if group_frames else 30)
         ax.grid(axis='y', alpha=0.3, color='white')
         if group_frames:
             _pad_group_frames(ax)
@@ -555,7 +522,7 @@ def plot_runtime_barplot_simple(errors_dict, settings_to_show, labels=None,
     ax.set_xticklabels([DISPLAY_NAMES.get(method, method) for method in methods],
                        rotation=25, ha='right', fontsize=11)
     ax.set_ylabel('Average runtime (seconds)', fontsize=13)
-    ax.set_title('Mean Runtime per Method', fontsize=14, pad=54)
+    ax.set_title('Mean Runtime per Method', fontsize=14, pad=30)
     ax.margins(y=0.15)
     ax.grid(axis='y', alpha=0.3, color='white')
     plt.tight_layout()
