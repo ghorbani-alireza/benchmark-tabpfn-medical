@@ -58,7 +58,7 @@ def _run_and_store(errors, prefix, fn, y_test, *args, **kwargs):
     errors[f'{prefix}_Probas'].append(proba)
 
 # Simulation Function - normal loop
-def simulation(n, mu, sigma1, sigma2, df=None, dist="Normal", iter=100, g_seed=2025, *, include_exaone=True, warnings_file=None):
+def simulation(n, mu, sigma1, sigma2, df=None, dist="Normal", iter=100, g_seed=2025, *, include_exaone=False, warnings_file=None):
     """Generate independent training and test samples, then run each model for every repetition.
     
     Return the results and captured warnings. include_exaone=False is used for the notebook pilot.
@@ -205,7 +205,7 @@ def simulation(n, mu, sigma1, sigma2, df=None, dist="Normal", iter=100, g_seed=2
 # parallel simulation function
 
 # part 1 - function to evaluate on simulated data in parallel
-def evaluate_on_sim_data(n, mu, sigma1, sigma2, df=None, dist="Normal", iter=100, g_seed=2025, *, include_exaone=True, warnings_file=None):
+def evaluate_on_sim_data(n, mu, sigma1, sigma2, df=None, dist="Normal", iter=100, g_seed=2025, *, include_exaone=False, warnings_file=None):
     """Run Monte Carlo repetitions in parallel threads and combine their results.
     
     Each repetition generates its own training and test samples. The progress bar counts completed results.
@@ -300,7 +300,7 @@ def evaluate_on_sim_data(n, mu, sigma1, sigma2, df=None, dist="Normal", iter=100
     
 # part2 - fucntion for single iteration
 def _single_sim_iteration(i, n1_tr, n2_tr, n1_te, n2_te, mu1, mu2,
-                          sigma1, sigma2, df, dist, g_seed, include_exaone=True):
+                          sigma1, sigma2, df, dist, g_seed, include_exaone=False):
     
     """Generate the data and evaluate the models for one parallel Monte Carlo repetition."""
     np.random.seed(g_seed)

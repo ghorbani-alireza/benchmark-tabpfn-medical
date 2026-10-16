@@ -24,6 +24,7 @@ def main():
     import matplotlib
     matplotlib.use('Agg')
     from benchmark import SETTINGS, SENSITIVITY, simulation, evaluate_on_real_data, save_outputs, calculate_bayes_auc
+    from benchmark.simulation_core import evaluate_on_sim_data
     from benchmark import load_echo_data, load_glucose_data, load_blood_gas_data
     from benchmark import config
 
@@ -65,19 +66,28 @@ def main():
     output.mkdir(parents=True)
     seed = args.seed if args.seed is not None else (2026 if args.analysis == 'sensitivity' else 2025)
 
-    # Main and sensitivity simulations use the same direct simulation function.
+    # Main simulation is sequential; only sensitivity uses parallel repetitions.
     if args.analysis in ('simulation', 'sensitivity'):
         settings = SENSITIVITY if args.analysis == 'sensitivity' else SETTINGS
+        runner = evaluate_on_sim_data if args.analysis == 'sensitivity' else simulation
         for setting_id, cfg in settings.items():
             suffix = '_sensitivity' if args.analysis == 'sensitivity' else ''
             name = f'simulation_setting{setting_id}{suffix}'
-            errors, warns = simulation(
+            result = runner(
                 n=cfg['n'], mu=cfg['mu'], sigma1=cfg['sigma1'], sigma2=cfg['sigma2'],
                 dist=cfg['dist'], df=cfg.get('df'), iter=args.repetitions, g_seed=seed,
+                include_exaone=False,
                 warnings_file=output / f'{name}.warnings.json',
             )
+            # simulation returns (results, warnings); the parallel runner returns results.
+            if args.analysis == 'simulation':
+                errors, warns = result
+            else:
+                errors = result
             save_outputs(errors, name, output_dir=output,
                          meta={**cfg, 'setting_id': setting_id, 'iter': args.repetitions, 'g_seed': seed,
+                               'include_exaone': False,
+                               'execution': 'parallel' if args.analysis == 'sensitivity' else 'sequential',
                                'bayes_auc': calculate_bayes_auc(cfg)})
     else:
         # Use the original three real-data loaders and per-class sample sizes.

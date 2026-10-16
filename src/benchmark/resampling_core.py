@@ -45,7 +45,7 @@ def _run_and_pack(fn, y_test, *args, **kwargs):
 
 # part1 - fucntion for single iteration calcualtion
 def _single_real_iteration(i, X_np, y_np, idx0, idx1,
-                           n1_tr, n2_tr, n1_te, n2_te, g_seed):
+                           n1_tr, n2_tr, n1_te, n2_te, g_seed, include_exaone=False):
 
     """Sample separate training and test rows from each class and evaluate every model once.
     
@@ -75,64 +75,71 @@ def _single_real_iteration(i, X_np, y_np, idx0, idx1,
         X_train, y_train, test_size=0.2, stratify=y_train, random_state=i+g_seed
     )
 
-    return {
-    'y_test': y_test,
-    'L-SLR': _run_and_pack(
-        run_linear_sparse_logistic_regression, y_test,
-        X_train, X_test, y_train, y_test,
-        X_train_sub, y_train_sub, X_val, y_val,
-        random_state=i+g_seed),
-    'SLR': _run_and_pack(
-        run_sparse_logistic_regression, y_test,
-        X_train, X_test, y_train, y_test,
-        X_train_sub, y_train_sub, X_val, y_val,
-        random_state=i+g_seed),
-    'RandomForest': _run_and_pack(
-        run_random_forest, y_test,
-        X_train, X_test, y_train, y_test,
-        X_train_sub, y_train_sub, X_val, y_val,
-        random_state=i+g_seed),
-    'XGBoost': _run_and_pack(
-        run_xgboost, y_test,
-        X_train, X_test, y_train, y_test,
-        X_train_sub, y_train_sub, X_val, y_val,
-        random_state=i+g_seed),
-    'CatBoost': _run_and_pack(
-        run_catboost, y_test,
-        X_train, X_test, y_train, y_test,
-        X_train_sub, y_train_sub, X_val, y_val,
-        random_state=i+g_seed),
-    'Quadro': _run_and_pack(
-        run_quadro, y_test,
-        X_train, X_test, y_train, y_test,
-        X_train_sub, y_train_sub, X_val, y_val,
-        random_state=i+g_seed),
-    'TabPFN_v25': _run_and_pack(
-        run_tabpfn_v25, y_test,
-        X_train, X_test, y_train, y_test, random_state=i+g_seed),
-    'TabPFN_v26': _run_and_pack(
-        run_tabpfn_v26, y_test,
-        X_train, X_test, y_train, y_test, random_state=i+g_seed),
-    'TabPFN_v3': _run_and_pack(
-        run_tabpfn_v3, y_test,
-        X_train, X_test, y_train, y_test, random_state=i+g_seed),
-    'TabPFN_v35': _run_and_pack(
-        run_tabpfn_v35, y_test,
-        X_train, X_test, y_train, y_test, random_state=i+g_seed),
-    'EXAONE': _run_and_pack(
-        run_exaone, y_test,
-        X_train, X_test, y_train, y_test, random_state=i+g_seed),
-    'TabICL-V2': _run_and_pack(
-        run_tabicl, y_test,
-        X_train, X_test, y_train, y_test, random_state=i+g_seed)
-}
+    
+    # run models and store
+    
+    results = {
+        'y_test': y_test,
+        'L-SLR': _run_and_pack(
+            run_linear_sparse_logistic_regression, y_test,
+            X_train, X_test, y_train, y_test,
+            X_train_sub, y_train_sub, X_val, y_val,
+            random_state=i+g_seed),
+        'SLR': _run_and_pack(
+            run_sparse_logistic_regression, y_test,
+            X_train, X_test, y_train, y_test,
+            X_train_sub, y_train_sub, X_val, y_val,
+            random_state=i+g_seed),
+        'RandomForest': _run_and_pack(
+            run_random_forest, y_test,
+            X_train, X_test, y_train, y_test,
+            X_train_sub, y_train_sub, X_val, y_val,
+            random_state=i+g_seed),
+        'XGBoost': _run_and_pack(
+            run_xgboost, y_test,
+            X_train, X_test, y_train, y_test,
+            X_train_sub, y_train_sub, X_val, y_val,
+            random_state=i+g_seed),
+        'CatBoost': _run_and_pack(
+            run_catboost, y_test,
+            X_train, X_test, y_train, y_test,
+            X_train_sub, y_train_sub, X_val, y_val,
+            random_state=i+g_seed),
+        'Quadro': _run_and_pack(
+            run_quadro, y_test,
+            X_train, X_test, y_train, y_test,
+            X_train_sub, y_train_sub, X_val, y_val,
+            random_state=i+g_seed),
+        'TabPFN_v25': _run_and_pack(
+            run_tabpfn_v25, y_test,
+            X_train, X_test, y_train, y_test, random_state=i+g_seed),
+        'TabPFN_v26': _run_and_pack(
+            run_tabpfn_v26, y_test,
+            X_train, X_test, y_train, y_test, random_state=i+g_seed),
+        'TabPFN_v3': _run_and_pack(
+            run_tabpfn_v3, y_test,
+            X_train, X_test, y_train, y_test, random_state=i+g_seed),
+        'TabPFN_v35': _run_and_pack(
+            run_tabpfn_v35, y_test,
+            X_train, X_test, y_train, y_test, random_state=i+g_seed),
+        'TabICL-V2': _run_and_pack(
+            run_tabicl, y_test,
+            X_train, X_test, y_train, y_test, random_state=i+g_seed),
+        
+    }
+    if include_exaone:
+        results['EXAONE'] = _run_and_pack(
+            run_exaone, y_test,
+            X_train, X_test, y_train, y_test, random_state=i+g_seed,
+        )
+    return results
 
 
 
 
 
 #  part2 - fucntion for all iterations
-def evaluate_on_real_data(X, y, n, iter=100, g_seed = 2025, *, warnings_file=None):
+def evaluate_on_real_data(X, y, n, iter=100, g_seed = 2025, *, include_exaone=False, warnings_file=None):
     #np.random.seed(g_seed)
 
     """Repeat row-level sampling and model evaluation on an existing dataset.
@@ -209,6 +216,8 @@ def evaluate_on_real_data(X, y, n, iter=100, g_seed = 2025, *, warnings_file=Non
                 ('EXAONE', 'EXAONE_'),
                 ('TabICL-V2', 'TabICL-V2_')
             ]:
+                if key == "EXAONE" and not include_exaone:
+                    continue
                 (t, mse, auc, fpr, tpr, proba, brier, slope, intercept) = res[key]
                 errors[prefix + 'Time'].append(t)
                 errors[prefix + 'MSE'].append(mse)

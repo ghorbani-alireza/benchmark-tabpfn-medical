@@ -1,7 +1,7 @@
 # Benchmarking TabPFN on medical tabular data
 
 A Python benchmark comparing logistic regression, Random Forest, XGBoost,
-CatBoost, QUADRO, TabPFN (versions 2.5, 2.6, 3, & 3.5), EXAONE Tabular, and TabICLv2.
+CatBoost, QUADRO, TabPFN (versions 2.5, 2.6, 3, & 3.5), EXAONE Tabular (only pilot run, look at the notebook), and TabICLv2.
 Experiments use synthetic scenarios or repeated sampling from three medical datasets.
 
 
@@ -94,7 +94,13 @@ and put these files in `io/real_data/`:
 
 ## 2. Run the full analyses from the terminal
 
-These commands run all model runners, including EXAONE.  
+These commands run all model runners, excluding EXAONE.  
+
+The main simulation command uses `simulation()`, the normal sequential loop.
+Only the sensitivity command uses `evaluate_on_sim_data()`, which runs Monte
+Carlo repetitions in parallel with 10 workers. Settings run one after another;
+models within each repetition run sequentially. The progress bar counts completed
+repetitions. The notebook's calls to `simulation()` also use the sequential loop.
 
 Main simulation: all eight baseline settings:
 
