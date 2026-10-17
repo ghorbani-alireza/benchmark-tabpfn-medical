@@ -60,10 +60,11 @@ def _run_and_store(errors, prefix, fn, y_test, *args, **kwargs):
     errors[f'{prefix}_Probas'].append(proba)
 
 # Simulation Function - normal loop
-def simulation(n, mu, sigma1, sigma2, df=None, dist="Normal", iter=100, g_seed=2025, *, include_exaone=False, warnings_file=None):
+def simulation(n, mu, sigma1, sigma2, df=None, dist="Normal", iter=100, g_seed=2025, *, include_exaone=False, warnings_file=None, progress_label=None):
     """Generate independent training and test samples, then run each model for every repetition.
     
     Return the results and captured warnings. include_exaone=False is used for the notebook pilot.
+    progress_label optionally identifies the setting in the progress bar.
     """
     initialize_worker()
     n1_tr, n2_tr = n['n1_tr'], n['n2_tr']
@@ -116,7 +117,7 @@ def simulation(n, mu, sigma1, sigma2, df=None, dist="Normal", iter=100, g_seed=2
         errors = {key: values for key, values in errors.items() if not key.startswith("EXAONE_")}
 
     with capture_output(warnings_file, config.SIM_RESULTS_DIR) as (captured_warnings, progress):
-        for i in tqdm(range(iter), desc=f"Sim {dist} Iterations", file=progress):
+        for i in tqdm(range(iter), desc=progress_label or f"Sim {dist} Iterations", file=progress):
 
             rng_tr = np.random.RandomState(i+ g_seed)
             rng_te = np.random.RandomState(i+ g_seed + 2000)
@@ -208,10 +209,11 @@ def simulation(n, mu, sigma1, sigma2, df=None, dist="Normal", iter=100, g_seed=2
 # parallel simulation function
 
 # part 1 - function to evaluate on simulated data in parallel
-def evaluate_on_sim_data(n, mu, sigma1, sigma2, df=None, dist="Normal", iter=100, g_seed=2025, *, include_exaone=False, warnings_file=None, n_jobs=10):
+def evaluate_on_sim_data(n, mu, sigma1, sigma2, df=None, dist="Normal", iter=100, g_seed=2025, *, include_exaone=False, warnings_file=None, n_jobs=10, progress_label=None):
     """Run Monte Carlo repetitions in separate processes with one thread each.
     
     Each repetition generates its own training and test samples. The progress bar counts completed results.
+    progress_label optionally identifies the setting in the progress bar.
     """
     initialize_worker()
     n1_tr, n2_tr = n['n1_tr'], n['n2_tr']
@@ -280,7 +282,7 @@ def evaluate_on_sim_data(n, mu, sigma1, sigma2, df=None, dist="Normal", iter=100
             for i in range(iter)
         )
 
-        for res, records, log_path in tqdm(results, total=iter, desc="Simulated-data iterations", file=progress):
+        for res, records, log_path in tqdm(results, total=iter, desc=progress_label or "Simulated-data iterations", file=progress):
             captured_warnings.extend(records)
             print(Path(log_path).read_text(), end="")
             errors['y_test_all'].append(res['y_test'])

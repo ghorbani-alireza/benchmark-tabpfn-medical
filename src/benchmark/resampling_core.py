@@ -141,12 +141,13 @@ def _single_real_iteration(i, X_np, y_np, idx0, idx1,
 
 
 #  part2 - fucntion for all iterations
-def evaluate_on_real_data(X, y, n, iter=100, g_seed = 2025, *, include_exaone=False, warnings_file=None, n_jobs=10):
+def evaluate_on_real_data(X, y, n, iter=100, g_seed = 2025, *, include_exaone=False, warnings_file=None, n_jobs=10, progress_label=None):
     #np.random.seed(g_seed)
 
     """Repeat row-level sampling and model evaluation on an existing dataset.
     
     Check the available class sizes first, run repetitions in parallel, and combine their results.
+    progress_label optionally identifies the dataset in the progress bar.
     """
     initialize_worker()
     X_np = np.asarray(X, dtype=np.float32)
@@ -212,7 +213,7 @@ def evaluate_on_real_data(X, y, n, iter=100, g_seed = 2025, *, include_exaone=Fa
             for i in range(iter)
         )
 
-        for res, records, log_path in tqdm(results, total=iter, desc="Real-data resampling", file=progress):
+        for res, records, log_path in tqdm(results, total=iter, desc=progress_label or "Real-data resampling", file=progress):
             captured_warnings.extend(records)
             print(Path(log_path).read_text(), end="")
             errors['y_test_all'].append(res['y_test'])

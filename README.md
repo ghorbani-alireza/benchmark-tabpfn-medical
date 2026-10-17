@@ -148,9 +148,11 @@ also specify `--seed`; the defaults are 2025 for main simulation/resampling and
 The terminal simulation command covers the eight baseline settings; the optional
 large-sample setting-2 experiment remains in the notebook's full-analysis cells.
 
-During model execution, only the main progress bar is displayed. Each setting
-or dataset saves a results CSV, metadata JSON, and a log of model
-messages. Arrays are saved in full. 
+During model execution, only the main progress bar is displayed. It identifies
+the current setting or dataset, such as `Setting 1 simulation
+iterations`, `Setting 7+ sensitivity iterations`, or `Echo resampling iterations`.
+Each setting or dataset saves a results CSV, metadata JSON, and a log of model
+messages. Arrays are saved in full.
 
 
 Real-data resampling currently samples rows;

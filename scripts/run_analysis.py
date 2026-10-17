@@ -66,7 +66,7 @@ def main(argv=None):
             'blood_gas': ('case_study_3_blood_gas_oximetry', load_blood_gas_data),
         }
         selected = dict.fromkeys(args.datasets if args.datasets is not None else available_datasets)
-        datasets = [available_datasets[name] for name in selected]
+        datasets = [(name, *available_datasets[name]) for name in selected]
 
     # Report existing results without loading data or fitting models.
     if args.analysis == 'report':
@@ -121,6 +121,7 @@ def main(argv=None):
                 n=cfg['n'], mu=cfg['mu'], sigma1=cfg['sigma1'], sigma2=cfg['sigma2'],
                 dist=cfg['dist'], df=cfg.get('df'), iter=args.repetitions, g_seed=seed,
                 include_exaone=False, **worker_options,
+                progress_label=f'Setting {setting_id} {args.analysis} iterations',
                 warnings_file=output / f'{name}.warnings.json',
             )
             # simulation returns (results, warnings); the parallel runner returns results.
@@ -138,12 +139,13 @@ def main(argv=None):
     else:
         # Use the selected real-data loaders and original per-class sample sizes.
         sample_sizes = {'n1_tr': 250, 'n2_tr': 250, 'n1_te': 500, 'n2_te': 500}
-        for dataset, loader in datasets:
+        for dataset_key, dataset, loader in datasets:
             X, y, _groups = loader(config.REAL_DATA_PATH)
             name = f'realdata_{dataset}'
             errors = evaluate_on_real_data(
                 X, y, sample_sizes, iter=args.repetitions, g_seed=seed,
                 n_jobs=args.jobs, include_exaone=False,
+                progress_label=f"{dataset_key.replace('_', ' ').capitalize()} resampling iterations",
                 warnings_file=output / f'{name}.warnings.json',
             )
             save_outputs(errors, name, output_dir=output, meta={

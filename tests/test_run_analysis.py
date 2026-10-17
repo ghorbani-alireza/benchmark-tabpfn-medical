@@ -67,6 +67,10 @@ class AnalysisSelectionTests(unittest.TestCase):
             [call.kwargs['n']['setting'] for call in self.benchmark.simulation.call_args_list],
             [5, 2],
         )
+        self.assertEqual(
+            [call.kwargs['progress_label'] for call in self.benchmark.simulation.call_args_list],
+            ['Setting 5 simulation iterations', 'Setting 2 simulation iterations'],
+        )
         saves = self.benchmark.save_outputs.call_args_list
         self.assertEqual([call.args[1] for call in saves],
                          ['simulation_setting5', 'simulation_setting2'])
@@ -87,6 +91,7 @@ class AnalysisSelectionTests(unittest.TestCase):
         self.assertEqual(options['iter'], 3)
         self.assertEqual(options['g_seed'], 2026)
         self.assertEqual(options['n_jobs'], 2)
+        self.assertEqual(options['progress_label'], 'Setting 7+ sensitivity iterations')
         self.assertEqual(options['warnings_file'],
                          self.output / 'simulation_setting7+_sensitivity.warnings.json')
         save = self.benchmark.save_outputs.call_args
@@ -100,6 +105,10 @@ class AnalysisSelectionTests(unittest.TestCase):
         self.benchmark.load_echo_data.assert_called_once()
         self.benchmark.load_blood_gas_data.assert_called_once()
         self.assertEqual(self.benchmark.evaluate_on_real_data.call_count, 2)
+        self.assertEqual(
+            [call.kwargs['progress_label'] for call in self.benchmark.evaluate_on_real_data.call_args_list],
+            ['Blood gas resampling iterations', 'Echo resampling iterations'],
+        )
         saves = self.benchmark.save_outputs.call_args_list
         self.assertEqual([call.args[1] for call in saves], [
             'realdata_case_study_3_blood_gas_oximetry', 'realdata_case_study_1_echo_notes',

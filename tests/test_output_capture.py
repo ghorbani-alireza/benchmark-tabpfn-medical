@@ -79,7 +79,7 @@ resampling = load_module('resampling_core')
 
 class OutputTests(unittest.TestCase):
     """Check output handling, model selection, and saved-array integrity."""
-    def check_run(self, parallel=False, real=False, include_exaone=True, repetitions=2):
+    def check_run(self, parallel=False, real=False, include_exaone=True, repetitions=2, progress_label=None):
         """Run the chosen workflow with mock models and verify its output files."""
         # All files go in a temporary folder that is deleted after the test.
         with tempfile.TemporaryDirectory() as temporary:
@@ -95,7 +95,7 @@ class OutputTests(unittest.TestCase):
             module = resampling if real else simulation
             with patch.object(module, 'Parallel', side_effect=serial_tasks), contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
                 common = dict(n={'n1_tr': 10, 'n2_tr': 10, 'n1_te': 4, 'n2_te': 4},
-                              iter=repetitions, warnings_file=path)
+                              iter=repetitions, warnings_file=path, progress_label=progress_label)
                 if real:
                     result = resampling.evaluate_on_real_data(
                         X=np.arange(120).reshape(60, 2), y=np.tile([0, 1], 30),
@@ -111,6 +111,9 @@ class OutputTests(unittest.TestCase):
             self.assertEqual(len(records), count * repetitions)
             self.assertEqual(stdout.getvalue(), '')
             self.assertIn('100%', stderr.getvalue())
+            expected_label = progress_label or ('Real-data resampling' if real else
+                                               'Simulated-data iterations' if parallel else 'Sim Normal Iterations')
+            self.assertIn(expected_label, stderr.getvalue())
             self.assertNotIn('checkpoint message', stderr.getvalue())
             self.assertNotIn('warning', stderr.getvalue())
             # Model prints and logging messages must be retained in the log file.
@@ -133,15 +136,15 @@ class OutputTests(unittest.TestCase):
 
     def test_sequential(self):
         """Check one-at-a-time simulation output capture for every model."""
-        self.check_run()
+        self.check_run(progress_label='Setting 1 simulation iterations')
 
     def test_parallel(self):
         """Check that messages from parallel simulation workers are saved quietly."""
-        self.check_run(parallel=True)
+        self.check_run(parallel=True, progress_label='Setting 7+ sensitivity iterations')
 
     def test_real_resampling(self):
         """Check output capture when resampling existing rows with mock models."""
-        self.check_run(real=True)
+        self.check_run(real=True, progress_label='Echo resampling iterations')
 
     def test_five_repetition_pilot(self):
         """Check five repetitions and confirm that EXAONE is never called."""
