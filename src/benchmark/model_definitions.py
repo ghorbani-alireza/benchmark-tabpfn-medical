@@ -265,7 +265,7 @@ def run_catboost(X_train, X_test, y_train, y_test, X_train_sub, y_train_sub, X_v
         task_type='CPU',
         verbose=0,
         random_seed=random_state
-    )# the same as possible
+    )# the same as XGBoost as much as possible
     def validation_auc(estimator, X, y):
         """CatBoost scoring must also request one prediction thread."""
         return roc_auc_score(y, estimator.predict_proba(X, thread_count=1)[:, 1])
@@ -312,13 +312,13 @@ def run_quadro(X_train, X_test, y_train, y_test,
     from quadro import QUADROClassifier
     from threadpoolctl import threadpool_limits
 
-    # Keep the five existing penalty pairs, rather than taking every combination.
+    # five  penalty pairs, rather than every combination.
     penalty_pairs = [(0.0, 0.0), (0.01, 0.01), (0.01, 0.1), (0.1, 0.1), (0.1, 1.0)]
     param_grid = [
         {'lambda_quadratic': [quadratic], 'lambda_linear': [linear]}
         for quadratic, linear in penalty_pairs
     ]
-    # The same held-out validation split used by the other classical runners.
+    # The same as other classical runners.
     validation_split = [(
         np.arange(len(X_train_sub)),
         np.arange(len(X_train_sub), len(X_train_sub) + len(X_val)),

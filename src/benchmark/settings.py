@@ -24,7 +24,7 @@ def _make_settings():
 
     # ── Setting 2 ─────────────────────────────────────────
     S[2] = dict(
-        label='Setting 2: Nonlinear Interactions with No Mean Shiftyou fucking kidding me wh',
+        label='Setting 2: Nonlinear Interactions with No Mean Shift',
         n={'n1_tr': 100, 'n2_tr': 100, 'n1_te': 500, 'n2_te': 500},
         mu={'mu1': np.zeros(20), 'mu2': np.zeros(20)},
         sigma1=sig23_1, sigma2=sig23_2,

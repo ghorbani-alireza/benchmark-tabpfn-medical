@@ -63,7 +63,7 @@ def _run_and_store(errors, prefix, fn, y_test, *args, **kwargs):
 def simulation(n, mu, sigma1, sigma2, df=None, dist="Normal", iter=100, g_seed=2025, *, include_exaone=False, warnings_file=None, progress_label=None):
     """Generate independent training and test samples, then run each model for every repetition.
     
-    Return the results and captured warnings. include_exaone=False is used for the notebook pilot.
+    Return the results and captured warnings. include_exaone=True is used for the notebook pilot.
     progress_label optionally identifies the setting in the progress bar.
     """
     initialize_worker()
