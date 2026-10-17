@@ -140,10 +140,7 @@ Main setting IDs are `1` through `8`; sensitivity also accepts `7+`. Dataset
 names are `echo`, `glucose`, and `blood_gas`. Use a single value to run one
 setting or dataset. Selections run in the supplied order, with repeated values
 run only once. Omitting the selection option runs all settings or datasets.
-Invalid IDs or options used with the wrong analysis are rejected before an
-analysis output folder is created. These selection options do not apply to
-`report`; report a subset run by pointing `--results` at its output directory.
-
+ 
 Each output directory must be new. Choose another name when repeating an
 analysis. Omit `--output` to generate a unique directory automatically. You can
 also specify `--seed`; the defaults are 2025 for main simulation/resampling and
