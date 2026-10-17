@@ -1,11 +1,11 @@
 """Run simulations, sensitivity analysis, resampling, or report saved results."""
 
 import argparse
-from pathlib import Path
 import time
+from pathlib import Path
 
 
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('analysis', choices=['simulation', 'sensitivity', 'resampling', 'report'])
     parser.add_argument('--repetitions', type=int, help='Number of Monte Carlo repetitions')
@@ -15,9 +15,17 @@ def main():
     parser.add_argument('--no-bayes-auc', action='store_true', help='Hide the Bayes AUC line in reports')
     parser.add_argument('--no-bayes-roc', action='store_true', help='Hide the Bayes ROC curve in reports')
     parser.add_argument('--jobs', type=int, default=10, help='Worker processes for sensitivity/resampling (default: 10)')
-    args = parser.parse_args()
+    parser.add_argument('--settings', nargs='+', metavar='ID',
+                        help='Simulation/sensitivity setting IDs (default: all; sensitivity also supports 7+)')
+    parser.add_argument('--datasets', nargs='+', choices=['echo', 'glucose', 'blood_gas'],
+                        help='Resampling datasets (default: all)')
+    args = parser.parse_args(argv)
     if args.jobs < 1:
         parser.error('--jobs must be positive')
+    if args.settings is not None and args.analysis not in ('simulation', 'sensitivity'):
+        parser.error('--settings is only available for simulation and sensitivity')
+    if args.datasets is not None and args.analysis != 'resampling':
+        parser.error('--datasets is only available for resampling')
     if args.analysis == 'report':
         if args.results is None:
             parser.error('report requires --results')
@@ -27,19 +35,51 @@ def main():
     # Use a plotting backend that saves figures without opening windows.
     import matplotlib
     matplotlib.use('Agg')
-    from benchmark import SETTINGS, SENSITIVITY, simulation, evaluate_on_real_data, save_outputs, calculate_bayes_auc
+    from benchmark import (
+        SENSITIVITY,
+        SETTINGS,
+        calculate_bayes_auc,
+        config,
+        evaluate_on_real_data,
+        load_blood_gas_data,
+        load_echo_data,
+        load_glucose_data,
+        save_outputs,
+        simulation,
+    )
     from benchmark.simulation_core import evaluate_on_sim_data
-    from benchmark import load_echo_data, load_glucose_data, load_blood_gas_data
-    from benchmark import config
+
+    # Validate selections before creating an output folder or running models.
+    if args.analysis in ('simulation', 'sensitivity'):
+        settings = SENSITIVITY if args.analysis == 'sensitivity' else SETTINGS
+        if args.settings is not None:
+            setting_ids = {str(setting_id): setting_id for setting_id in settings}
+            unknown = [value for value in args.settings if value not in setting_ids]
+            if unknown:
+                parser.error(f"unknown --settings ID(s): {', '.join(unknown)}; "
+                             f"choose from: {', '.join(setting_ids)}")
+            settings = {setting_ids[value]: settings[setting_ids[value]] for value in args.settings}
+    elif args.analysis == 'resampling':
+        available_datasets = {
+            'echo': ('case_study_1_echo_notes', load_echo_data),
+            'glucose': ('case_study_2_blood_glucose_management_1', load_glucose_data),
+            'blood_gas': ('case_study_3_blood_gas_oximetry', load_blood_gas_data),
+        }
+        selected = dict.fromkeys(args.datasets if args.datasets is not None else available_datasets)
+        datasets = [available_datasets[name] for name in selected]
 
     # Report existing results without loading data or fitting models.
     if args.analysis == 'report':
-        from benchmark.utils import load_fixed, read_labels, read_bayes_auc
-        from benchmark.table_functions import build_measures_table
         from benchmark.plot_functions import (
-            plot_boxplots_grid, plot_boxplots_grid_lands, plot_roc_curves_grid,
-            plot_calibration_grid, plot_brier_vs_auc_grid, plot_runtime_barplot_simple,
+            plot_boxplots_grid,
+            plot_boxplots_grid_lands,
+            plot_brier_vs_auc_grid,
+            plot_calibration_grid,
+            plot_roc_curves_grid,
+            plot_runtime_barplot_simple,
         )
+        from benchmark.table_functions import build_measures_table
+        from benchmark.utils import load_fixed, read_bayes_auc, read_labels
         files = {path.stem: path for path in sorted(args.results.glob('*.csv'))}
         if not files:
             parser.error('no result CSV files found in --results directory')
@@ -72,7 +112,6 @@ def main():
 
     # Main simulation is sequential; only sensitivity uses parallel repetitions.
     if args.analysis in ('simulation', 'sensitivity'):
-        settings = SENSITIVITY if args.analysis == 'sensitivity' else SETTINGS
         runner = evaluate_on_sim_data if args.analysis == 'sensitivity' else simulation
         for setting_id, cfg in settings.items():
             suffix = '_sensitivity' if args.analysis == 'sensitivity' else ''
@@ -86,7 +125,7 @@ def main():
             )
             # simulation returns (results, warnings); the parallel runner returns results.
             if args.analysis == 'simulation':
-                errors, warns = result
+                errors, _warns = result
             else:
                 errors = result
             save_outputs(errors, name, output_dir=output,
@@ -97,15 +136,10 @@ def main():
                                'threads_per_worker': 1,
                                'bayes_auc': calculate_bayes_auc(cfg)})
     else:
-        # Use the original three real-data loaders and per-class sample sizes.
-        datasets = [
-            ('case_study_1_echo_notes', load_echo_data),
-            ('case_study_2_blood_glucose_management_1', load_glucose_data),
-            ('case_study_3_blood_gas_oximetry', load_blood_gas_data),
-        ]
+        # Use the selected real-data loaders and original per-class sample sizes.
         sample_sizes = {'n1_tr': 250, 'n2_tr': 250, 'n1_te': 500, 'n2_te': 500}
         for dataset, loader in datasets:
-            X, y, groups = loader(config.REAL_DATA_PATH)
+            X, y, _groups = loader(config.REAL_DATA_PATH)
             name = f'realdata_{dataset}'
             errors = evaluate_on_real_data(
                 X, y, sample_sizes, iter=args.repetitions, g_seed=seed,

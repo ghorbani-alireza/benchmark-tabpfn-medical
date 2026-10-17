@@ -122,6 +122,28 @@ Real-data resampling: all three datasets:
 uv run --locked python scripts/run_analysis.py resampling --repetitions 500 --output io/real_data_results/main
 ```
 
+To run a subset, add `--settings` to simulation/sensitivity or `--datasets` to
+resampling. Each option accepts one or more space-separated values:
+
+```bash
+# Main settings 2 and 5 only
+uv run --locked python scripts/run_analysis.py simulation --settings 2 5 --repetitions 100 --output io/sim_results/main_subset
+
+# Sensitivity settings 2 and 7+ only
+uv run --locked python scripts/run_analysis.py sensitivity --settings 2 '7+' --repetitions 100 --jobs 10 --output io/sim_results/sensitivity_subset
+
+# Echo and blood-gas datasets only
+uv run --locked python scripts/run_analysis.py resampling --datasets echo blood_gas --repetitions 500 --jobs 10 --output io/real_data_results/subset
+```
+
+Main setting IDs are `1` through `8`; sensitivity also accepts `7+`. Dataset
+names are `echo`, `glucose`, and `blood_gas`. Use a single value to run one
+setting or dataset. Selections run in the supplied order, with repeated values
+run only once. Omitting the selection option runs all settings or datasets.
+Invalid IDs or options used with the wrong analysis are rejected before an
+analysis output folder is created. These selection options do not apply to
+`report`; report a subset run by pointing `--results` at its output directory.
+
 Each output directory must be new. Choose another name when repeating an
 analysis. Omit `--output` to generate a unique directory automatically. You can
 also specify `--seed`; the defaults are 2025 for main simulation/resampling and
