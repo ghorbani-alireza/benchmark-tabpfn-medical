@@ -122,7 +122,7 @@ def main(argv=None):
                 dist=cfg['dist'], df=cfg.get('df'), iter=args.repetitions, g_seed=seed,
                 include_exaone=False, **worker_options,
                 progress_label=f'Setting {setting_id} {args.analysis} iterations',
-                warnings_file=output / f'{name}.warnings.json',
+                warnings_file=output / 'warnings' / f'{name}.warnings.json',
             )
             # simulation returns (results, warnings); the parallel runner returns results.
             if args.analysis == 'simulation':
@@ -146,7 +146,7 @@ def main(argv=None):
                 X, y, sample_sizes, iter=args.repetitions, g_seed=seed,
                 n_jobs=args.jobs, include_exaone=False,
                 progress_label=f"{dataset_key.replace('_', ' ').capitalize()} resampling iterations",
-                warnings_file=output / f'{name}.warnings.json',
+                warnings_file=output / 'warnings' / f'{name}.warnings.json',
             )
             save_outputs(errors, name, output_dir=output, meta={
                 'dataset': dataset, 'n': sample_sizes, 'iter': args.repetitions,

@@ -71,6 +71,8 @@ class AnalysisSelectionTests(unittest.TestCase):
             [call.kwargs['progress_label'] for call in self.benchmark.simulation.call_args_list],
             ['Setting 5 simulation iterations', 'Setting 2 simulation iterations'],
         )
+        for call in self.benchmark.simulation.call_args_list:
+            self.assertEqual(call.kwargs['warnings_file'].parent, self.output / 'warnings')
         saves = self.benchmark.save_outputs.call_args_list
         self.assertEqual([call.args[1] for call in saves],
                          ['simulation_setting5', 'simulation_setting2'])
@@ -93,7 +95,7 @@ class AnalysisSelectionTests(unittest.TestCase):
         self.assertEqual(options['n_jobs'], 2)
         self.assertEqual(options['progress_label'], 'Setting 7+ sensitivity iterations')
         self.assertEqual(options['warnings_file'],
-                         self.output / 'simulation_setting7+_sensitivity.warnings.json')
+                         self.output / 'warnings' / 'simulation_setting7+_sensitivity.warnings.json')
         save = self.benchmark.save_outputs.call_args
         self.assertEqual(save.args, ({'result': 'sensitivity'}, 'simulation_setting7+_sensitivity'))
         self.assertEqual(save.kwargs['meta']['setting_id'], '7+')
@@ -114,6 +116,7 @@ class AnalysisSelectionTests(unittest.TestCase):
             'realdata_case_study_3_blood_gas_oximetry', 'realdata_case_study_1_echo_notes',
         ])
         for call in self.benchmark.evaluate_on_real_data.call_args_list:
+            self.assertEqual(call.kwargs['warnings_file'].parent, self.output / 'warnings')
             self.assertEqual(call.kwargs['n_jobs'], 2)
             self.assertEqual(call.kwargs['iter'], 3)
             self.assertEqual(call.kwargs['g_seed'], 2025)

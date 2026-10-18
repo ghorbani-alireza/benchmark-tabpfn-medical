@@ -41,7 +41,7 @@ dependencies = [
     "pyyaml==6.0.3",
     "threadpoolctl==3.7.0",
     "exaonetabular @ git+https://github.com/LGAI-Research/EXAONE-Tabular.git@8638e07d09fad154249bd75ba4786181491f7025",
-
+    "db-dtypes>=1.8.0",
 ]
 
 [dependency-groups]
