@@ -110,6 +110,19 @@ uv run --locked python scripts/run_analysis.py sensitivity --settings 2 '7+' --r
 uv run --locked python scripts/run_analysis.py resampling --datasets echo blood_gas --repetitions 500 --output io/real_data_results/subset
 ```
 
+**`FileNotFoundError` for a TabPFN checkpoint during a parallel run** First run one repetition with a single worker to download and verify the models:
+
+```bash
+uv run --locked python scripts/run_analysis.py sensitivity --settings 1 --repetitions 1 --jobs 1 --output io/sim_results/sensitivity_test
+```
+
+After it succeeds, retry in the same terminal with the same cache settings:
+
+```bash
+uv run --locked python scripts/run_analysis.py sensitivity --repetitions 100 --jobs 10 
+```
+
+
 Main setting IDs are `1` through `8`; sensitivity also accepts `7+`. Dataset
 names are `echo`, `glucose`, and `blood_gas`. Use one value to select a single
 setting or dataset; omit the option to run all of them.
