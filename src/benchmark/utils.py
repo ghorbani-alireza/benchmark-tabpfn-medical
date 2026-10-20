@@ -136,6 +136,7 @@ def capture_output(warnings_file, output_dir):
     warning_path = Path(warnings_file)
     warning_path.parent.mkdir(parents=True, exist_ok=True)
     # Keep the original screen output for the main progress bar.
+    # tqdm needs dynamic_ncols=True to detect its width after stderr is redirected.
     progress = sys.stderr
     saved_warnings = []
     # Library logging may use existing screen handlers, so redirect those too.

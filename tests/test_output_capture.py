@@ -79,7 +79,7 @@ resampling = load_module('resampling_core')
 
 class OutputTests(unittest.TestCase):
     """Check output handling, model selection, and saved-array integrity."""
-    def check_run(self, parallel=False, real=False, include_exaone=True, repetitions=2, progress_label=None):
+    def check_run(self, parallel=False, real=False, include_exaone=True, repetitions=2, progress_label=None, terminal_width=None):
         """Run the chosen workflow with mock models and verify its output files."""
         # All files go in a temporary folder that is deleted after the test.
         with tempfile.TemporaryDirectory() as temporary:
@@ -114,6 +114,13 @@ class OutputTests(unittest.TestCase):
             expected_label = progress_label or ('Real-data resampling' if real else
                                                'Simulated-data iterations' if parallel else 'Sim Normal Iterations')
             self.assertIn(expected_label, stderr.getvalue())
+            if terminal_width is not None:
+                # Each carriage return must overwrite one terminal row, even
+                # though capture_output has redirected sys.stderr to a log.
+                frames = stderr.getvalue().split('\r')
+                self.assertGreater(len(frames), 1)
+                for frame in frames:
+                    self.assertLessEqual(len(frame.rstrip('\n')), terminal_width)
             self.assertNotIn('checkpoint message', stderr.getvalue())
             self.assertNotIn('warning', stderr.getvalue())
             # Model prints and logging messages must be retained in the log file.
@@ -153,6 +160,23 @@ class OutputTests(unittest.TestCase):
     def test_real_resampling(self):
         """Check output capture when resampling existing rows with mock models."""
         self.check_run(real=True, progress_label='Echo resampling iterations')
+
+    def test_progress_fits_terminal_while_stderr_is_redirected(self):
+        """Long labels must not make the progress bar wrap onto new rows."""
+        for width, parallel, real, label in (
+            (60, False, False, 'Setting 1 simulation iterations'),
+            (60, True, False, 'Setting 7+ sensitivity iterations'),
+            (60, False, True, 'Blood gas resampling iterations'),
+            (80, False, False, 'Setting 1 simulation iterations'),
+            (80, True, False, 'Setting 7+ sensitivity iterations'),
+            (80, False, True, 'Blood gas resampling iterations'),
+        ):
+            with self.subTest(width=width, parallel=parallel, real=real), patch(
+                'tqdm.std._screen_shape_wrapper',
+                return_value=lambda stream: (width, 24),
+            ):
+                self.check_run(parallel=parallel, real=real,
+                               progress_label=label, terminal_width=width)
 
     def test_five_repetition_pilot(self):
         """Check five repetitions and confirm that EXAONE is never called."""

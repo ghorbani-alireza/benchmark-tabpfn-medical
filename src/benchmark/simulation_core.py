@@ -136,7 +136,7 @@ def simulation(n, mu, sigma1, sigma2, df=None, dist="Normal", iter=100, g_seed=2
         errors = {key: values for key, values in errors.items() if not key.startswith("EXAONE_")}
 
     with capture_output(warnings_file, config.SIM_RESULTS_DIR) as (captured_warnings, progress):
-        for i in tqdm(range(iter), desc=progress_label or f"Sim {dist} Iterations", file=progress):
+        for i in tqdm(range(iter), desc=progress_label or f"Sim {dist} Iterations", file=progress, dynamic_ncols=True):
 
             rng_tr = np.random.RandomState(i+ g_seed)
             rng_te = np.random.RandomState(i+ g_seed + 2000)
@@ -313,7 +313,7 @@ def evaluate_on_sim_data(n, mu, sigma1, sigma2, df=None, dist="Normal", iter=100
             for i in range(iter)
         )
 
-        for res, records, log_path in tqdm(results, total=iter, desc=progress_label or "Simulated-data iterations", file=progress):
+        for res, records, log_path in tqdm(results, total=iter, desc=progress_label or "Simulated-data iterations", file=progress, dynamic_ncols=True):
             captured_warnings.extend(records)
             print(Path(log_path).read_text(), end="")
             errors['y_test_all'].append(res['y_test'])

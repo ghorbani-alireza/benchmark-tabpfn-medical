@@ -227,7 +227,7 @@ def evaluate_on_real_data(X, y, n, iter=100, g_seed = 2025, *, include_exaone=Fa
             for i in range(iter)
         )
 
-        for res, records, log_path in tqdm(results, total=iter, desc=progress_label or "Real-data resampling", file=progress):
+        for res, records, log_path in tqdm(results, total=iter, desc=progress_label or "Real-data resampling", file=progress, dynamic_ncols=True):
             captured_warnings.extend(records)
             print(Path(log_path).read_text(), end="")
             errors['y_test_all'].append(res['y_test'])
