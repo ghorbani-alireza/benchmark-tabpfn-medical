@@ -37,19 +37,26 @@ def _run_and_pack(fn, y_test, *args, **kwargs):
     res = fn(*args, **kwargs)
     elapsed = time.perf_counter() - start
 
-    mse, auc, fpr, tpr, proba, brier = res[2], res[1], res[3], res[4], res[5], res[6]
+    (_, auc, mse, fpr, tpr, proba, brier,
+     setup_time, tune_time, fit_time, predict_time) = res
     p = np.clip(proba, 0.001, 0.999)
-    cal = LogisticRegression(solver='liblinear').fit(logit(p).reshape(-1, 1), y_test)
+    cal = LogisticRegression(penalty=None, solver='lbfgs', max_iter=2000).fit(logit(p).reshape(-1, 1), y_test)
 
     return (elapsed, mse, auc, fpr, tpr, proba, brier,
-            cal.coef_[0][0], cal.intercept_[0])
+            cal.coef_[0][0], cal.intercept_[0],
+            setup_time, tune_time, fit_time, predict_time)
 
 
 def _run_and_store(errors, prefix, fn, y_test, *args, **kwargs):
     """Run one model and append its measures and predictions to the result lists."""
-    t, mse, auc, fpr, tpr, proba, brier, slope, intercept = _run_and_pack(
+    (t, mse, auc, fpr, tpr, proba, brier, slope, intercept,
+     setup_time, tune_time, fit_time, predict_time) = _run_and_pack(
         fn, y_test, *args, **kwargs)
     errors[f'{prefix}_Time'].append(t)
+    errors[f'{prefix}_SetupTime'].append(setup_time)
+    errors[f'{prefix}_TuneTime'].append(tune_time)
+    errors[f'{prefix}_FitTime'].append(fit_time)
+    errors[f'{prefix}_PredictTime'].append(predict_time)
     errors[f'{prefix}_MSE'].append(mse)
     errors[f'{prefix}_AUC'].append(auc)
     errors[f'{prefix}_FPR'].append(fpr)
@@ -75,39 +82,51 @@ def simulation(n, mu, sigma1, sigma2, df=None, dist="Normal", iter=100, g_seed=2
 
     errors = {
         'L-SLR_MSE': [], 'L-SLR_AUC': [], 'L-SLR_Time': [], 'L-SLR_FPR': [], 'L-SLR_TPR': [],
+        'L-SLR_SetupTime': [], 'L-SLR_TuneTime': [], 'L-SLR_FitTime': [], 'L-SLR_PredictTime': [],
         'L-SLR_Brier': [], 'L-SLR_CalSlope': [], 'L-SLR_CalIntercept': [],
         'L-SLR_Probas': [],
         'SLR_MSE': [], 'SLR_AUC': [], 'SLR_Time': [], 'SLR_FPR': [], 'SLR_TPR': [],
+        'SLR_SetupTime': [], 'SLR_TuneTime': [], 'SLR_FitTime': [], 'SLR_PredictTime': [],
         'SLR_Brier': [], 'SLR_CalSlope': [], 'SLR_CalIntercept': [],
         'SLR_Probas': [],
         'RandomForest_MSE': [], 'RandomForest_AUC': [], 'RandomForest_Time': [], 'RandomForest_FPR': [], 'RandomForest_TPR': [],
+        'RandomForest_SetupTime': [], 'RandomForest_TuneTime': [], 'RandomForest_FitTime': [], 'RandomForest_PredictTime': [],
         'RandomForest_Brier': [], 'RandomForest_CalSlope': [], 'RandomForest_CalIntercept': [],
         'RandomForest_Probas': [],
         'XGBoost_MSE': [], 'XGBoost_AUC': [], 'XGBoost_Time': [], 'XGBoost_FPR': [], 'XGBoost_TPR': [],
+        'XGBoost_SetupTime': [], 'XGBoost_TuneTime': [], 'XGBoost_FitTime': [], 'XGBoost_PredictTime': [],
         'XGBoost_Brier': [], 'XGBoost_CalSlope': [], 'XGBoost_CalIntercept': [],
         'XGBoost_Probas': [],
         'CatBoost_MSE': [], 'CatBoost_AUC': [], 'CatBoost_Time': [], 'CatBoost_FPR': [], 'CatBoost_TPR': [],
+        'CatBoost_SetupTime': [], 'CatBoost_TuneTime': [], 'CatBoost_FitTime': [], 'CatBoost_PredictTime': [],
         'CatBoost_Brier': [], 'CatBoost_CalSlope': [], 'CatBoost_CalIntercept': [],
         'CatBoost_Probas': [],
         'Quadro_MSE': [], 'Quadro_AUC': [], 'Quadro_Time': [], 'Quadro_FPR': [], 'Quadro_TPR': [],
+        'Quadro_SetupTime': [], 'Quadro_TuneTime': [], 'Quadro_FitTime': [], 'Quadro_PredictTime': [],
         'Quadro_Brier': [], 'Quadro_CalSlope': [], 'Quadro_CalIntercept': [], 
         'Quadro_Probas': [],
         'TabPFN_v25_MSE': [], 'TabPFN_v25_AUC': [], 'TabPFN_v25_Time': [], 'TabPFN_v25_FPR': [], 'TabPFN_v25_TPR': [],
+        'TabPFN_v25_SetupTime': [], 'TabPFN_v25_TuneTime': [], 'TabPFN_v25_FitTime': [], 'TabPFN_v25_PredictTime': [],
         'TabPFN_v25_Brier': [], 'TabPFN_v25_CalSlope': [], 'TabPFN_v25_CalIntercept': [],
         'TabPFN_v25_Probas': [],
         'TabPFN_v26_MSE': [], 'TabPFN_v26_AUC': [], 'TabPFN_v26_Time': [], 'TabPFN_v26_FPR': [], 'TabPFN_v26_TPR': [],
+        'TabPFN_v26_SetupTime': [], 'TabPFN_v26_TuneTime': [], 'TabPFN_v26_FitTime': [], 'TabPFN_v26_PredictTime': [],
         'TabPFN_v26_Brier': [], 'TabPFN_v26_CalSlope': [], 'TabPFN_v26_CalIntercept': [],
         'TabPFN_v26_Probas': [],
         'TabPFN_v3_MSE': [], 'TabPFN_v3_AUC': [], 'TabPFN_v3_Time': [], 'TabPFN_v3_FPR': [], 'TabPFN_v3_TPR': [],
+        'TabPFN_v3_SetupTime': [], 'TabPFN_v3_TuneTime': [], 'TabPFN_v3_FitTime': [], 'TabPFN_v3_PredictTime': [],
         'TabPFN_v3_Brier': [], 'TabPFN_v3_CalSlope': [], 'TabPFN_v3_CalIntercept': [],
         'TabPFN_v3_Probas': [],
         'TabPFN_v35_MSE': [], 'TabPFN_v35_AUC': [], 'TabPFN_v35_Time': [], 'TabPFN_v35_FPR': [], 'TabPFN_v35_TPR': [],
+        'TabPFN_v35_SetupTime': [], 'TabPFN_v35_TuneTime': [], 'TabPFN_v35_FitTime': [], 'TabPFN_v35_PredictTime': [],
         'TabPFN_v35_Brier': [], 'TabPFN_v35_CalSlope': [], 'TabPFN_v35_CalIntercept': [],
         'TabPFN_v35_Probas': [],
         'EXAONE_MSE': [], 'EXAONE_AUC': [], 'EXAONE_Time': [], 'EXAONE_FPR': [], 'EXAONE_TPR': [],
+        'EXAONE_SetupTime': [], 'EXAONE_TuneTime': [], 'EXAONE_FitTime': [], 'EXAONE_PredictTime': [],
         'EXAONE_Brier': [], 'EXAONE_CalSlope': [], 'EXAONE_CalIntercept': [],
         'EXAONE_Probas': [],
         'TabICL-V2_MSE': [], 'TabICL-V2_AUC': [], 'TabICL-V2_Time': [], 'TabICL-V2_FPR': [], 'TabICL-V2_TPR': [],
+        'TabICL-V2_SetupTime': [], 'TabICL-V2_TuneTime': [], 'TabICL-V2_FitTime': [], 'TabICL-V2_PredictTime': [],
         'TabICL-V2_Brier': [], 'TabICL-V2_CalSlope': [], 'TabICL-V2_CalIntercept': [],
         'TabICL-V2_Probas': [],
         'y_test_all': []
@@ -224,39 +243,51 @@ def evaluate_on_sim_data(n, mu, sigma1, sigma2, df=None, dist="Normal", iter=100
 
     errors = {
         'L-SLR_MSE': [], 'L-SLR_AUC': [], 'L-SLR_Time': [], 'L-SLR_FPR': [], 'L-SLR_TPR': [],
+        'L-SLR_SetupTime': [], 'L-SLR_TuneTime': [], 'L-SLR_FitTime': [], 'L-SLR_PredictTime': [],
         'L-SLR_Brier': [], 'L-SLR_CalSlope': [], 'L-SLR_CalIntercept': [],
         'L-SLR_Probas': [],
         'SLR_MSE': [], 'SLR_AUC': [], 'SLR_Time': [], 'SLR_FPR': [], 'SLR_TPR': [],
+        'SLR_SetupTime': [], 'SLR_TuneTime': [], 'SLR_FitTime': [], 'SLR_PredictTime': [],
         'SLR_Brier': [], 'SLR_CalSlope': [], 'SLR_CalIntercept': [],
         'SLR_Probas': [],
         'RandomForest_MSE': [], 'RandomForest_AUC': [], 'RandomForest_Time': [], 'RandomForest_FPR': [], 'RandomForest_TPR': [],
+        'RandomForest_SetupTime': [], 'RandomForest_TuneTime': [], 'RandomForest_FitTime': [], 'RandomForest_PredictTime': [],
         'RandomForest_Brier': [], 'RandomForest_CalSlope': [], 'RandomForest_CalIntercept': [],
         'RandomForest_Probas': [],
         'XGBoost_MSE': [], 'XGBoost_AUC': [], 'XGBoost_Time': [], 'XGBoost_FPR': [], 'XGBoost_TPR': [],
+        'XGBoost_SetupTime': [], 'XGBoost_TuneTime': [], 'XGBoost_FitTime': [], 'XGBoost_PredictTime': [],
         'XGBoost_Brier': [], 'XGBoost_CalSlope': [], 'XGBoost_CalIntercept': [],
         'XGBoost_Probas': [],
         'CatBoost_MSE': [], 'CatBoost_AUC': [], 'CatBoost_Time': [], 'CatBoost_FPR': [], 'CatBoost_TPR': [],
+        'CatBoost_SetupTime': [], 'CatBoost_TuneTime': [], 'CatBoost_FitTime': [], 'CatBoost_PredictTime': [],
         'CatBoost_Brier': [], 'CatBoost_CalSlope': [], 'CatBoost_CalIntercept': [],
         'CatBoost_Probas': [],
         'Quadro_MSE': [], 'Quadro_AUC': [], 'Quadro_Time': [], 'Quadro_FPR': [], 'Quadro_TPR': [],
+        'Quadro_SetupTime': [], 'Quadro_TuneTime': [], 'Quadro_FitTime': [], 'Quadro_PredictTime': [],
         'Quadro_Brier': [], 'Quadro_CalSlope': [], 'Quadro_CalIntercept': [], 
         'Quadro_Probas': [],
         'TabPFN_v25_MSE': [], 'TabPFN_v25_AUC': [], 'TabPFN_v25_Time': [], 'TabPFN_v25_FPR': [], 'TabPFN_v25_TPR': [],
+        'TabPFN_v25_SetupTime': [], 'TabPFN_v25_TuneTime': [], 'TabPFN_v25_FitTime': [], 'TabPFN_v25_PredictTime': [],
         'TabPFN_v25_Brier': [], 'TabPFN_v25_CalSlope': [], 'TabPFN_v25_CalIntercept': [],
         'TabPFN_v25_Probas': [],
         'TabPFN_v26_MSE': [], 'TabPFN_v26_AUC': [], 'TabPFN_v26_Time': [], 'TabPFN_v26_FPR': [], 'TabPFN_v26_TPR': [],
+        'TabPFN_v26_SetupTime': [], 'TabPFN_v26_TuneTime': [], 'TabPFN_v26_FitTime': [], 'TabPFN_v26_PredictTime': [],
         'TabPFN_v26_Brier': [], 'TabPFN_v26_CalSlope': [], 'TabPFN_v26_CalIntercept': [],
         'TabPFN_v26_Probas': [],
         'TabPFN_v3_MSE': [], 'TabPFN_v3_AUC': [], 'TabPFN_v3_Time': [], 'TabPFN_v3_FPR': [], 'TabPFN_v3_TPR': [],
+        'TabPFN_v3_SetupTime': [], 'TabPFN_v3_TuneTime': [], 'TabPFN_v3_FitTime': [], 'TabPFN_v3_PredictTime': [],
         'TabPFN_v3_Brier': [], 'TabPFN_v3_CalSlope': [], 'TabPFN_v3_CalIntercept': [],
         'TabPFN_v3_Probas': [],
         'TabPFN_v35_MSE': [], 'TabPFN_v35_AUC': [], 'TabPFN_v35_Time': [], 'TabPFN_v35_FPR': [], 'TabPFN_v35_TPR': [],
+        'TabPFN_v35_SetupTime': [], 'TabPFN_v35_TuneTime': [], 'TabPFN_v35_FitTime': [], 'TabPFN_v35_PredictTime': [],
         'TabPFN_v35_Brier': [], 'TabPFN_v35_CalSlope': [], 'TabPFN_v35_CalIntercept': [],
         'TabPFN_v35_Probas': [],
         'EXAONE_MSE': [], 'EXAONE_AUC': [], 'EXAONE_Time': [], 'EXAONE_FPR': [], 'EXAONE_TPR': [],
+        'EXAONE_SetupTime': [], 'EXAONE_TuneTime': [], 'EXAONE_FitTime': [], 'EXAONE_PredictTime': [],
         'EXAONE_Brier': [], 'EXAONE_CalSlope': [], 'EXAONE_CalIntercept': [],
         'EXAONE_Probas': [],
         'TabICL-V2_MSE': [], 'TabICL-V2_AUC': [], 'TabICL-V2_Time': [], 'TabICL-V2_FPR': [], 'TabICL-V2_TPR': [],
+        'TabICL-V2_SetupTime': [], 'TabICL-V2_TuneTime': [], 'TabICL-V2_FitTime': [], 'TabICL-V2_PredictTime': [],
         'TabICL-V2_Brier': [], 'TabICL-V2_CalSlope': [], 'TabICL-V2_CalIntercept': [],
         'TabICL-V2_Probas': [],
         'y_test_all': []
@@ -302,8 +333,13 @@ def evaluate_on_sim_data(n, mu, sigma1, sigma2, df=None, dist="Normal", iter=100
             ]:
                 if key == "EXAONE" and not include_exaone:
                     continue
-                (t, mse, auc, fpr, tpr, proba, brier, slope, intercept) = res[key]
+                (t, mse, auc, fpr, tpr, proba, brier, slope, intercept,
+                 setup_time, tune_time, fit_time, predict_time) = res[key]
                 errors[prefix + 'Time'].append(t)
+                errors[prefix + 'SetupTime'].append(setup_time)
+                errors[prefix + 'TuneTime'].append(tune_time)
+                errors[prefix + 'FitTime'].append(fit_time)
+                errors[prefix + 'PredictTime'].append(predict_time)
                 errors[prefix + 'MSE'].append(mse)
                 errors[prefix + 'AUC'].append(auc)
                 errors[prefix + 'FPR'].append(fpr)

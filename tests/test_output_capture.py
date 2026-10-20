@@ -64,7 +64,7 @@ def mock_model(name):
         warnings.warn(f'{name}: warning', UserWarning)
         logging.getLogger('tabicl').warning(f'{name}: logging warning')
         proba = np.where(y_test == 1, 0.8, 0.2)
-        return 1., 1., 0., np.array([0, 1]), np.array([0, 1]), proba, .04
+        return 1., 1., 0., np.array([0, 1]), np.array([0, 1]), proba, .04, .01, .02, .03, .04
     run.__name__ = name
     return run
 
@@ -128,6 +128,14 @@ class OutputTests(unittest.TestCase):
             errors = result if parallel or real else result[0]
             self.assertEqual(len(errors['y_test_all']), repetitions)
             self.assertEqual('EXAONE_AUC' in errors, include_exaone)
+            for column in errors:
+                if column.endswith('_AUC'):
+                    prefix = column.removesuffix('_AUC')
+                    for metric, expected in (
+                        ('SetupTime', .01), ('TuneTime', .02),
+                        ('FitTime', .03), ('PredictTime', .04),
+                    ):
+                        self.assertEqual(errors[f'{prefix}_{metric}'], [expected] * repetitions)
             if not parallel and not real:
                 self.assertEqual(result[1], records)
             # The analysis must restore the caller's normal warning/logging settings.

@@ -9,7 +9,8 @@ METHODS = ['L-SLR', 'SLR', 'RandomForest', 'XGBoost', 'CatBoost',
            'EXAONE', 'TabICL-V2', 'Quadro']
 
 # Scalar metrics only. FPR/TPR/Probas are list-valued — used by plots.
-METRICS = ['AUC', 'MSE', 'Brier', 'Time', 'CalSlope', 'CalIntercept']
+METRICS = ['AUC', 'MSE', 'Brier', 'Time', 'SetupTime', 'TuneTime',
+           'FitTime', 'PredictTime', 'CalSlope', 'CalIntercept']
 
 HIGHER_IS_BETTER = {'AUC'}
 

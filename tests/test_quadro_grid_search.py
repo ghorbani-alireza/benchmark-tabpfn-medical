@@ -5,6 +5,7 @@ from unittest.mock import patch
 import numpy as np
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import GridSearchCV, train_test_split
+from sklearn.preprocessing import StandardScaler
 from threadpoolctl import threadpool_limits
 
 from benchmark.model_definitions import run_quadro
@@ -23,6 +24,8 @@ class QuadroGridSearchTests(unittest.TestCase):
             X_train, y_train, test_size=.2, stratify=y_train, random_state=2025,
         )
         pairs = [(0., 0.), (.01, .01), (.01, .1), (.1, .1), (.1, 1.)]
+        X_sub_scaled = StandardScaler().fit_transform(X_sub)
+        X_train_scaled = StandardScaler().fit_transform(X_train)
 
         # Reproduce the original manual search as a regression reference.
         best_auc = -np.inf
@@ -56,14 +59,16 @@ class QuadroGridSearchTests(unittest.TestCase):
 
         self.assertEqual(len(calls), 6)  # Five validation fits, one final refit.
         for call, pair in zip(calls[:5], pairs):
-            np.testing.assert_array_equal(call[0], X_sub)
+            np.testing.assert_allclose(call[0], X_sub_scaled)
             np.testing.assert_array_equal(call[1], y_sub)
             self.assertEqual(call[2:], pair)
-        np.testing.assert_array_equal(calls[-1][0], np.vstack((X_sub, X_val)))
+        np.testing.assert_allclose(calls[-1][0], X_train_scaled)
+        np.testing.assert_array_equal(calls[-1][1], y_train)
         self.assertEqual(calls[-1][2:], best_pair)
         options = search.call_args.kwargs
         self.assertEqual(options['n_jobs'], 1)
-        self.assertIs(options['refit'], True)
+        self.assertIs(options['refit'], False)
+        self.assertIs(search.call_args.args[0].standardize, False)
         np.testing.assert_allclose(result[5], expected_proba, rtol=1e-5, atol=1e-6)
         self.assertAlmostEqual(result[1], roc_auc_score(y_test, expected_proba))
         self.assertAlmostEqual(result[2], np.mean((expected_pred - y_test) ** 2))

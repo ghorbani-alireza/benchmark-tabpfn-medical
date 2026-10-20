@@ -32,7 +32,7 @@ def example_iteration(*args):
     time.sleep(.2)
     y = np.array([0, 1])
     measures = (.01, 0., 1., np.array([0., 1.]), np.array([0., 1.]),
-                np.array([.1, .9]), .01, 1., 0.)
+                np.array([.1, .9]), .01, 1., 0., .001, .002, .003, .004)
     return {**{name: measures for name in (
         'L-SLR', 'SLR', 'RandomForest', 'XGBoost', 'CatBoost', 'Quadro',
         'TabPFN_v25', 'TabPFN_v26', 'TabPFN_v3', 'TabPFN_v35', 'TabICL-V2',
@@ -109,6 +109,10 @@ class CPUExecutionTests(unittest.TestCase):
                     self.assertTrue(all(count == 1 for count in state['pools']))
                 self.assertEqual(len(list(path.with_suffix('.workers').glob('*.json'))), 4)
                 self.assertEqual(len(results['SLR_AUC']), 4)
+                self.assertEqual(results['SLR_SetupTime'], [.001] * 4)
+                self.assertEqual(results['SLR_TuneTime'], [.002] * 4)
+                self.assertEqual(results['SLR_FitTime'], [.003] * 4)
+                self.assertEqual(results['SLR_PredictTime'], [.004] * 4)
                 self.assertFalse(any(key.startswith('EXAONE_') for key in results))
 
 

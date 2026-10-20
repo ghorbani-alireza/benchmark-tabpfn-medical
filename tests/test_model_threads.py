@@ -31,8 +31,8 @@ class ModelThreadTests(unittest.TestCase):
         with patch.object(CatBoostClassifier, '_predict', checked_prediction):
             result = run_catboost(X, X_val, y, y_val, X_sub, y_sub, X_val, y_val,
                                  random_state=20)
-        # Nine validation predictions, followed by test labels and probabilities.
-        self.assertEqual(len(prediction_threads), 11)
+        # Nine validation predictions, followed by one test probability call.
+        self.assertEqual(len(prediction_threads), 10)
         self.assertEqual(set(prediction_threads), {1})
         self.assertTrue(np.isfinite(result[1]))
 
