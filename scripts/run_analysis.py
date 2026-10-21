@@ -9,7 +9,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('analysis', choices=['simulation', 'sensitivity', 'resampling', 'report'])
     parser.add_argument('--repetitions', type=int, help='Number of Monte Carlo repetitions')
-    parser.add_argument('--seed', type=int, help='Random seed; default 2025 (sensitivity: 2026)')
+    parser.add_argument('--seed', type=int, help='Random seed; default 2025 (sensitivity: 12025)')
     parser.add_argument('--output', type=Path, help='New directory for this analysis')
     parser.add_argument('--results', type=Path, help='Saved result directory to report')
     parser.add_argument('--no-bayes-auc', action='store_true', help='Hide the Bayes AUC line in reports')
@@ -108,7 +108,7 @@ def main(argv=None):
     if output.exists():
         parser.error('output directory already exists; choose another --output name')
     output.mkdir(parents=True)
-    seed = args.seed if args.seed is not None else (2026 if args.analysis == 'sensitivity' else 2025)
+    seed = args.seed if args.seed is not None else (12025 if args.analysis == 'sensitivity' else 2025)
 
     # Main simulation is sequential; only sensitivity uses parallel repetitions.
     if args.analysis in ('simulation', 'sensitivity'):

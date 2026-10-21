@@ -1,5 +1,5 @@
 {
-  "label": "Setting 2: Nonlinear Interactions with No Mean Shiftyou fucking kidding me wh",
+  "label": "Setting 2: Nonlinear Interactions with No Mean Shift",
   "n": {
     "n1_tr": 100,
     "n2_tr": 100,
@@ -938,9 +938,9 @@
   ],
   "dist": "Normal",
   "setting_id": 2,
-  "iter": 5,
+  "iter": 20,
   "g_seed": 2025,
-  "include_exaone": false,
+  "include_exaone": true,
   "bayes_auc": {
     "auc": 0.93179,
     "mc_se": 0.0007972329112644232,

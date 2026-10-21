@@ -30,10 +30,12 @@ from .model_definitions import (
 )
 
 
-# resampling Functions for realdata
+
 
 def _run_and_pack(fn, y_test, *args, **kwargs):
     """Run one model, measure its runtime, and calculate calibration from its test probabilities."""
+    
+    # time all
     start = time.perf_counter()
     res = fn(*args, **kwargs)
     elapsed = time.perf_counter() - start
@@ -46,6 +48,9 @@ def _run_and_pack(fn, y_test, *args, **kwargs):
     return (elapsed, mse, auc, fpr, tpr, proba, brier,
             cal.coef_[0][0], cal.intercept_[0],
             setup_time, tune_time, fit_time, predict_time)
+    
+ 
+ # resampling Functions for realdata
 
 # part1 - fucntion for single iteration calcualtion
 def _single_real_iteration(i, X_np, y_np, idx0, idx1,

@@ -96,31 +96,17 @@ Real-data resampling: all three datasets:
 uv run --locked python scripts/run_analysis.py resampling --repetitions 500 --output io/real_data_results/main
 ```
 
-To run a subset, add `--settings` to simulation/sensitivity or `--datasets` to
+To run a subset, add `--settings 2 5` to simulation/sensitivity or `--datasets echo blood_gas` to
 resampling. Each option accepts one or more space-separated values:
 
-```bash
-# Main settings 2 and 5 only
-uv run --locked python scripts/run_analysis.py simulation --settings 2 5 --repetitions 100 --output io/sim_results/main_subset
-
-# Sensitivity settings 2 and 7+ only
-uv run --locked python scripts/run_analysis.py sensitivity --settings 2 '7+' --repetitions 100 --output io/sim_results/sensitivity_subset
-
-# Echo and blood-gas datasets only
-uv run --locked python scripts/run_analysis.py resampling --datasets echo blood_gas --repetitions 500 --output io/real_data_results/subset
-```
 
 **`FileNotFoundError` for a TabPFN checkpoint during a parallel run** First run one repetition with a single worker to download and verify the models:
 
 ```bash
-uv run --locked python scripts/run_analysis.py sensitivity --settings 1 --repetitions 1 --jobs 1 --output io/sim_results/sensitivity_test
+uv run --locked python scripts/run_analysis.py sensitivity --settings 1 --repetitions 1 --jobs 1 --output io/sim_results/worker_download
 ```
 
-After it succeeds, retry in the same terminal with the same cache settings:
-
-```bash
-uv run --locked python scripts/run_analysis.py sensitivity --repetitions 100 --jobs 10 
-```
+After it succeeds, retry.
 
 
 Main setting IDs are `1` through `8`; sensitivity also accepts `7+`. Dataset
@@ -155,6 +141,19 @@ Restart the kernel after changing model code.
 
 The four TabPFN source packages are included in `vendor/`. No additional vendor
 setup is needed for normal runs.
+
+## Foundation models
+
+Default ensemble settings and downloaded pretrained checkpoints:
+
+| Model | Ensemble setting | Checkpoint filename |
+|--------------------|----------|----------------------------------------------------|
+| TabPFN 2.5         | `8`      | `tabpfn-v2.5-classifier-v2.5_default.ckpt`         |
+| TabPFN 2.6         | `8`      | `tabpfn-v2.6-classifier-v2.6_default.ckpt`         |
+| TabPFN 3           | `"auto"` | `tabpfn-v3-classifier-v3_default.ckpt`             |
+| TabPFN 3.5         | `"auto"` | `tabpfn-v3.5-20260909.safetensors`                 |
+| EXAONE Tabular 1.0 | `8`      | `exaone-tabular-classifier-v1_default.safetensors` |
+| TabICL v2          | `8`      | `tabicl-classifier-v2-20260212.ckpt`               |
 
 ## Files
 

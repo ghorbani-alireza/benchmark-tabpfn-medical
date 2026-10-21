@@ -33,6 +33,8 @@ from . import config
 
 def _run_and_pack(fn, y_test, *args, **kwargs):
     """Run one model, measure its runtime, and add calibration slope and intercept to its results."""
+    
+    # time all
     start = time.perf_counter()
     res = fn(*args, **kwargs)
     elapsed = time.perf_counter() - start
@@ -228,7 +230,7 @@ def simulation(n, mu, sigma1, sigma2, df=None, dist="Normal", iter=100, g_seed=2
 # parallel simulation function
 
 # part 1 - function to evaluate on simulated data in parallel
-def evaluate_on_sim_data(n, mu, sigma1, sigma2, df=None, dist="Normal", iter=100, g_seed=2025, *, include_exaone=False, warnings_file=None, n_jobs=10, progress_label=None):
+def evaluate_on_sim_data(n, mu, sigma1, sigma2, df=None, dist="Normal", iter=100, g_seed=12025, *, include_exaone=False, warnings_file=None, n_jobs=10, progress_label=None):
     """Run Monte Carlo repetitions in separate processes with one thread each.
     
     Each repetition generates its own training and test samples. The progress bar counts completed results.

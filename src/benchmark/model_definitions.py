@@ -64,8 +64,8 @@ def _configure_pretrained_credentials():
 # Linear Sparse Logistic Regression
 def run_linear_sparse_logistic_regression(X_train, X_test, y_train, y_test, X_train_sub, y_train_sub, X_val, y_val, random_state=None):
     """Scale explicitly, tune L1 logistic regression, fit once, and return metrics/times."""
+    #setup
     setup_start = perf_counter()
-
     lr = LogisticRegression(
         penalty='l1', solver='liblinear', max_iter=2000,
         n_jobs=1, random_state=random_state,
@@ -86,7 +86,7 @@ def run_linear_sparse_logistic_regression(X_train, X_test, y_train, y_test, X_tr
     )
     setup_time = perf_counter() - setup_start
 
-    # 1. Tune: learn scaling from the training subset only.
+    # Tune
     tune_start = perf_counter()
     tune_scaler = StandardScaler()
     X_train_sub_scaled = tune_scaler.fit_transform(X_train_sub)
@@ -95,11 +95,10 @@ def run_linear_sparse_logistic_regression(X_train, X_test, y_train, y_test, X_tr
         np.vstack((X_train_sub_scaled, X_val_scaled)),
         np.hstack((y_train_sub, y_val)),
     )
-    # Read the settings selected by the validation search.
     best_C = grid_search.best_params_['C']
     tune_time = perf_counter() - tune_start
 
-    # 2. Final fit: learn a fresh scaler and fit the selected model on all training rows.
+    # fit
     fit_start = perf_counter()
     scaler = StandardScaler()
     X_train_scaled = scaler.fit_transform(X_train)
@@ -107,7 +106,7 @@ def run_linear_sparse_logistic_regression(X_train, X_test, y_train, y_test, X_tr
     lr.fit(X_train_scaled, y_train)
     fit_time = perf_counter() - fit_start
 
-    # 3. Predict: reuse the final scaler, without fitting it on test data.
+    # predict
     predict_start = perf_counter()
     X_test_scaled = scaler.transform(X_test)
     proba = lr.predict_proba(X_test_scaled)[:, 1]
@@ -130,8 +129,9 @@ def run_linear_sparse_logistic_regression(X_train, X_test, y_train, y_test, X_tr
 
 def run_sparse_logistic_regression(X_train, X_test, y_train, y_test, X_train_sub, y_train_sub, X_val, y_val, random_state=None):
     """Scale explicitly, tune L1 logistic regression, fit once, and return metrics/times."""
+    
+    #
     setup_start = perf_counter()
-
     def _augment_features(X):
         # Original features, squared terms, and pairwise products.
         rows, columns = np.triu_indices(X.shape[1])
@@ -152,12 +152,12 @@ def run_sparse_logistic_regression(X_train, X_test, y_train, y_test, X_train_sub
         )],
         scoring=scoring,
         n_jobs=1,
-        refit=False,  # We perform and time the single final fit below.
+        refit=False,  # for final fit below.
         error_score='raise',
     )
     setup_time = perf_counter() - setup_start
 
-    # 1. Tune: learn scaling from the training subset only.
+    #
     tune_start = perf_counter()
     Aug_X_train_sub = _augment_features(X_train_sub)
     Aug_X_val = _augment_features(X_val)
@@ -168,11 +168,10 @@ def run_sparse_logistic_regression(X_train, X_test, y_train, y_test, X_train_sub
         np.vstack((X_train_sub_scaled, X_val_scaled)),
         np.hstack((y_train_sub, y_val)),
     )
-    # Read the settings selected by the validation search.
     best_C = grid_search.best_params_['C']
     tune_time = perf_counter() - tune_start
 
-    # 2. Final fit: learn a fresh scaler and fit the selected model on all training rows.
+    #
     fit_start = perf_counter()
     Aug_X_train = _augment_features(X_train)
     scaler = StandardScaler()
@@ -181,7 +180,7 @@ def run_sparse_logistic_regression(X_train, X_test, y_train, y_test, X_train_sub
     lr.fit(X_train_scaled, y_train)
     fit_time = perf_counter() - fit_start
 
-    # 3. Predict: reuse the final scaler, without fitting it on test data.
+    # 
     predict_start = perf_counter()
     Aug_X_test = _augment_features(X_test)
     X_test_scaled = scaler.transform(Aug_X_test)
@@ -205,16 +204,14 @@ def run_sparse_logistic_regression(X_train, X_test, y_train, y_test, X_train_sub
 
 def run_random_forest(X_train, X_test, y_train, y_test, X_train_sub, y_train_sub, X_val, y_val, random_state=None):
 
-    # model and tuning grid
-    """Choose tree count and depth using validation AUC, refit the forest, and evaluate test data."""
+    # 
     setup_start = perf_counter()
     rf = RandomForestClassifier(
-        n_estimators=100, # number of decision trees
+        n_estimators=100, # number of trees
         max_depth=5, #important for overfiitng
         n_jobs=1,
         random_state=random_state
-    ) # consistent with XGBoost and CatBoost also
-    # not include too many parameteres cosidering the grid length
+    ) 
     param_grid = {'n_estimators': [50, 100, 200], 'max_depth': [3, 5, None]}
     grid_search = GridSearchCV(
         rf,
@@ -226,15 +223,14 @@ def run_random_forest(X_train, X_test, y_train, y_test, X_train_sub, y_train_sub
     )
     setup_time = perf_counter() - setup_start
 
-    # 1. Tune on the training subset and validation set, without a final refit.
+    # 
     tune_start = perf_counter()
     grid_search.fit(np.vstack((X_train_sub, X_val)), np.hstack((y_train_sub, y_val)))
-    # Read the settings selected by the validation search.
     best_n_estimators = grid_search.best_params_['n_estimators']
     best_max_depth = grid_search.best_params_['max_depth']
     tune_time = perf_counter() - tune_start
 
-    # 2. Fit the selected configuration once on the full training set.
+    # 
     fit_start = perf_counter()
     rf.set_params(
         n_estimators=best_n_estimators,
@@ -243,7 +239,7 @@ def run_random_forest(X_train, X_test, y_train, y_test, X_train_sub, y_train_sub
     rf.fit(X_train, y_train)
     fit_time = perf_counter() - fit_start
 
-    # Time test prediction only; calculate evaluation metrics afterward.
+    # 
     predict_start = perf_counter()
     probabilities = rf.predict_proba(X_test)
     pred = rf.classes_[np.argmax(probabilities, axis=1)]
@@ -270,10 +266,10 @@ def run_random_forest(X_train, X_test, y_train, y_test, X_train_sub, y_train_sub
 # XGBoost
 def run_xgboost(X_train, X_test, y_train, y_test, X_train_sub, y_train_sub, X_val, y_val, random_state=None):
     """Choose tree count and depth using validation AUC, refit XGBoost, and evaluate test data."""
+    
+    #
     setup_start = perf_counter()
     from xgboost import XGBClassifier
-
-    # Define model and tuning grid
     xgb = XGBClassifier(
         n_estimators=100,
         max_depth=6,
@@ -283,7 +279,7 @@ def run_xgboost(X_train, X_test, y_train, y_test, X_train_sub, y_train_sub, X_va
         device='cpu',
         n_jobs=1,
         random_state=random_state
-    ) # the same as random forests and catboost
+    ) 
     param_grid = {'n_estimators': [50, 100, 200], 'max_depth': [3, 5, 6]}
     grid_search = GridSearchCV(
         xgb,
@@ -295,15 +291,14 @@ def run_xgboost(X_train, X_test, y_train, y_test, X_train_sub, y_train_sub, X_va
     )
     setup_time = perf_counter() - setup_start
 
-    # 1. Tune on the training subset and validation set, without a final refit.
+    # 
     tune_start = perf_counter()
     grid_search.fit(np.vstack((X_train_sub, X_val)), np.hstack((y_train_sub, y_val)))
-    # Read the settings selected by the validation search.
     best_n_estimators = grid_search.best_params_['n_estimators']
     best_max_depth = grid_search.best_params_['max_depth']
     tune_time = perf_counter() - tune_start
 
-    # 2. Fit the selected configuration once on the full training set.
+    # 
     fit_start = perf_counter()
     xgb.set_params(
         n_estimators=best_n_estimators,
@@ -312,7 +307,7 @@ def run_xgboost(X_train, X_test, y_train, y_test, X_train_sub, y_train_sub, X_va
     xgb.fit(X_train, y_train)
     fit_time = perf_counter() - fit_start
 
-    # Time test prediction only; calculate evaluation metrics afterward.
+    # 
     predict_start = perf_counter()
     proba = xgb.predict_proba(X_test)[:, 1]
     pred = xgb.classes_[(proba > 0.5).astype(int)]
@@ -338,9 +333,10 @@ def run_xgboost(X_train, X_test, y_train, y_test, X_train_sub, y_train_sub, X_va
 # CatBoost
 def run_catboost(X_train, X_test, y_train, y_test, X_train_sub, y_train_sub, X_val, y_val, random_state=None):
     """Choose iteration count and depth using validation AUC, refit CatBoost, and evaluate test data."""
+    
+    #
     setup_start = perf_counter()
     from catboost import CatBoostClassifier
-    #  model and tuning grid
     cb = CatBoostClassifier(
         iterations=100,
         depth=6,
@@ -349,7 +345,7 @@ def run_catboost(X_train, X_test, y_train, y_test, X_train_sub, y_train_sub, X_v
         task_type='CPU',
         verbose=0,
         random_seed=random_state
-    )# the same as XGBoost as much as possible
+    )
     def validation_auc(estimator, X, y):
         """CatBoost scoring must also request one prediction thread."""
         return roc_auc_score(y, estimator.predict_proba(X, thread_count=1)[:, 1])
@@ -365,7 +361,7 @@ def run_catboost(X_train, X_test, y_train, y_test, X_train_sub, y_train_sub, X_v
     )
     setup_time = perf_counter() - setup_start
 
-    # 1. Tune on the training subset and validation set, without a final refit.
+    # 
     tune_start = perf_counter()
     grid_search.fit(np.vstack((X_train_sub, X_val)), np.hstack((y_train_sub, y_val)))
     # Read the settings selected by the validation search.
@@ -373,7 +369,7 @@ def run_catboost(X_train, X_test, y_train, y_test, X_train_sub, y_train_sub, X_v
     best_depth = grid_search.best_params_['depth']
     tune_time = perf_counter() - tune_start
 
-    # 2. Fit the selected configuration once on the full training set.
+    # 
     fit_start = perf_counter()
     cb.set_params(
         iterations=best_iterations,
@@ -382,7 +378,7 @@ def run_catboost(X_train, X_test, y_train, y_test, X_train_sub, y_train_sub, X_v
     cb.fit(X_train, y_train)
     fit_time = perf_counter() - fit_start
 
-    # Time test prediction only; calculate evaluation metrics afterward.
+    # 
     predict_start = perf_counter()
     proba = cb.predict_proba(X_test, thread_count=1)[:, 1]
     pred = cb.classes_[(proba > cb.get_probability_threshold()).astype(int)]
@@ -407,12 +403,11 @@ def run_catboost(X_train, X_test, y_train, y_test, X_train_sub, y_train_sub, X_v
 def run_quadro(X_train, X_test, y_train, y_test,
                X_train_sub, y_train_sub, X_val, y_val,
                random_state=None, *, metrics=None, solver="admm"):
-    """Scale explicitly, tune QUADRO penalties, fit once, and return metrics/times."""
+
+    # 
     setup_start = perf_counter()
     from quadro import QUADROClassifier
     from threadpoolctl import threadpool_limits
-
-    # Scaling is handled here, so QUADRO's internal feature scaling is disabled.
     quadro = QUADROClassifier(standardize=False, solver=solver)
     penalty_pairs = [(0., 0.), (.01, .01), (.01, .1), (.1, .1), (.1, 1.)]
     param_grid = [
@@ -429,13 +424,13 @@ def run_quadro(X_train, X_test, y_train, y_test,
         )],
         scoring=scoring,
         n_jobs=1,
-        refit=False,  # We perform and time the single final fit below.
+        refit=False,  # same reason
         error_score='raise',
     )
     setup_time = perf_counter() - setup_start
 
     with threadpool_limits(limits=1):
-        # 1. Tune: learn scaling from the training subset only.
+        # 
         tune_start = perf_counter()
         tune_scaler = StandardScaler()
         X_train_sub_scaled = tune_scaler.fit_transform(X_train_sub)
@@ -444,12 +439,11 @@ def run_quadro(X_train, X_test, y_train, y_test,
             np.vstack((X_train_sub_scaled, X_val_scaled)),
             np.hstack((y_train_sub, y_val)),
         )
-        # Read the settings selected by the validation search.
         best_lambda_quadratic = grid_search.best_params_['lambda_quadratic']
         best_lambda_linear = grid_search.best_params_['lambda_linear']
         tune_time = perf_counter() - tune_start
 
-        # 2. Final fit: learn a fresh scaler and fit the selected model on all training rows.
+        # 
         fit_start = perf_counter()
         scaler = StandardScaler()
         X_train_scaled = scaler.fit_transform(X_train)
@@ -460,7 +454,7 @@ def run_quadro(X_train, X_test, y_train, y_test,
         quadro.fit(X_train_scaled, y_train)
         fit_time = perf_counter() - fit_start
 
-        # 3. Predict: reuse the final scaler, without fitting it on test data.
+        # 
         predict_start = perf_counter()
         X_test_scaled = scaler.transform(X_test)
         # Keep QUADRO's analytic class cutoff and calibrated probabilities.
@@ -482,10 +476,8 @@ def run_quadro(X_train, X_test, y_train, y_test,
 ################################################################################
 
 
-def _run_tabpfn_generic(X_train, X_test, y_train, y_test, model_class, model_kwargs, random_state, *, setup_time=0.0):
-
-
-
+def _run_tabpfn_generic(X_train, X_test, y_train, y_test, model_class, model_kwargs, random_state, *, setup_time=0):
+    #step1 - setup - extra step here
     setup_start = perf_counter()
     model = model_class(**model_kwargs,
                         ignore_pretraining_limits=True,
@@ -493,13 +485,15 @@ def _run_tabpfn_generic(X_train, X_test, y_train, y_test, model_class, model_kwa
                         )
     setup_time += perf_counter() - setup_start
 
-    tune_time = 0.0  # No hyperparameter for foundation models.
+    # step2 - No hyperparameter 
+    tune_time = 0.0  
 
-    # fit() prepares preprocessing and training context; pretrained weights stay fixed.
+    # step3 - fit
     fit_start = perf_counter()
     model.fit(X_train, y_train)
     fit_time = perf_counter() - fit_start
 
+    # step4 - predict
     predict_start = perf_counter()
     probabilities = model.predict_proba(X_test)
     pred = model.classes_[np.argmax(probabilities, axis=1)]
@@ -519,58 +513,58 @@ def _run_tabpfn_generic(X_train, X_test, y_train, y_test, model_class, model_kwa
 
 # Runner for each version
 def run_tabpfn_v25(X_train, X_test, y_train, y_test, random_state=None):
-    """Evaluate TabPFN 2.5 on CPU with its default eight-member ensemble."""
+    #
     setup_start = perf_counter()
     _configure_pretrained_credentials()
     from tabpfn_v25 import TabPFNClassifier as TabPFNClassifier_v25
-
     setup_time = perf_counter() - setup_start
+    
     return _run_tabpfn_generic(
         X_train, X_test, y_train, y_test,
         TabPFNClassifier_v25,
-        {"n_estimators": 8, "device": "cpu", "n_preprocessing_jobs": 1},
+        {"n_estimators": 8, "device": "cpu", "n_preprocessing_jobs": 1}, #e_est =8 default
         random_state, setup_time=setup_time,
     )
 
 def run_tabpfn_v26(X_train, X_test, y_train, y_test, random_state=None):
-    """Evaluate TabPFN 2.6 on CPU with its default eight-member ensemble."""
+    #
     setup_start = perf_counter()
     _configure_pretrained_credentials()
     from tabpfn_v26 import TabPFNClassifier as TabPFNClassifier_v26
-
     setup_time = perf_counter() - setup_start
+    
     return _run_tabpfn_generic(
         X_train, X_test, y_train, y_test,
         TabPFNClassifier_v26,
-         {"n_estimators": 8, "device": "cpu", "n_preprocessing_jobs": 1},
+         {"n_estimators": 8, "device": "cpu", "n_preprocessing_jobs": 1}, #e_est =8 default
         random_state, setup_time=setup_time,
     )
 
 def run_tabpfn_v3(X_train, X_test, y_train, y_test, random_state=None):
-    """Evaluate TabPFN 3 on CPU with its default automatic ensemble selection."""
+    #
     setup_start = perf_counter()
     _configure_pretrained_credentials()
     from tabpfn_v3 import TabPFNClassifier as TabPFNClassifier_v3
-
     setup_time = perf_counter() - setup_start
+    #
     return _run_tabpfn_generic(
         X_train, X_test, y_train, y_test,
         TabPFNClassifier_v3,
-        {"n_estimators": "auto", "device": "cpu", "n_preprocessing_jobs": 1},
+        {"n_estimators": "auto", "device": "cpu", "n_preprocessing_jobs": 1}, #e_est = 'auto' default
         random_state, setup_time=setup_time,
     )
 
 def run_tabpfn_v35(X_train, X_test, y_train, y_test, random_state=None):
-    """Evaluate TabPFN 3.5 on CPU with checkpoint-aware automatic ensemble selection."""
+    #
     setup_start = perf_counter()
     _configure_pretrained_credentials()
     from tabpfn_v35 import TabPFNClassifier as TabPFNClassifier_v35
-
     setup_time = perf_counter() - setup_start
+    #
     return _run_tabpfn_generic(
         X_train, X_test, y_train, y_test,
         TabPFNClassifier_v35,
-        {"n_estimators": "auto", "device": "cpu", "n_preprocessing_jobs": 1},
+        {"n_estimators": "auto", "device": "cpu", "n_preprocessing_jobs": 1}, #e_est = 'auto' default
         random_state, setup_time=setup_time,
     )
     
@@ -579,24 +573,28 @@ def run_tabpfn_v35(X_train, X_test, y_train, y_test, random_state=None):
 ################################################################################
 # EXAONE
 def run_exaone(X_train, X_test, y_train, y_test, random_state=None):
-    """Evaluate pretrained EXAONE on CPU with its default eight-member ensemble."""
+    #
     setup_start = perf_counter()
     _configure_pretrained_credentials()
     from exaonetabular import EXAONETabularClassifier
     from .execution import single_threaded_torch
-
     with single_threaded_torch(n_threads=1):
         clf = EXAONETabularClassifier.from_pretrained(
             device="cpu",
-            ensemble_count=8,
+            ensemble_count=8, #e_ensem =8 default
             seed=random_state,
         )
         setup_time = perf_counter() - setup_start
-        tune_time = 0.0  # No hyperparameter search for foundation models.
-        # fit() prepares preprocessing and training context; pretrained weights stay fixed.
+        
+        # foundation model
+        tune_time = 0.0  
+        
+        #
         fit_start = perf_counter()
         clf.fit(X_train, y_train)
         fit_time = perf_counter() - fit_start
+        
+        #
         predict_start = perf_counter()
         probabilities = clf.predict_proba(X_test)
         pred = clf.classes_[np.argmax(probabilities, axis=1)]
@@ -617,28 +615,32 @@ def run_exaone(X_train, X_test, y_train, y_test, random_state=None):
     ################################################################################
 # TabICLv2
 def run_tabicl(X_train, X_test, y_train, y_test, random_state=None):
-    """Evaluate pretrained TabICL v2 on CPU with its default eight-member ensemble."""
+    #
     setup_start = perf_counter()
     _configure_pretrained_credentials()
     from tabicl import TabICLClassifier
     clf = TabICLClassifier(
         device="cpu",
         n_jobs=1,
-        n_estimators=8,
+        n_estimators=8,  #e_est=8 default
         verbose=False,
         random_state=random_state if random_state is not None else 42,
     )
     setup_time = perf_counter() - setup_start
-    tune_time = 0.0  # No hyperparameter search for foundation models.
-    # fit() prepares preprocessing and training context; pretrained weights stay fixed.
+    
+    # 
+    tune_time = 0.0  
+    
+    #
     fit_start = perf_counter()
     clf.fit(X_train, y_train)
     fit_time = perf_counter() - fit_start
+    
+    #
     predict_start = perf_counter()
     probabilities = clf.predict_proba(X_test)
     pred = clf.classes_[np.argmax(probabilities, axis=1)]
     proba = probabilities[:, 1]
-
     predict_time = perf_counter() - predict_start
 
     fpr, tpr, _ = roc_curve(y_test, proba)
