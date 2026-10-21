@@ -128,14 +128,9 @@ uv run --locked python scripts/run_analysis.py report --results io/real_data_res
 Reports save `tables/` and `plots/` inside the selected results directory. The
 same command works for a saved pilot directory.
 
-For notebook results, set `SHOW_MAIN_RESULTS = True` and execute the results
-cells. `RUN_FULL_ANALYSIS = False` skips the full analysis cells; the pilot runs
-in its own cell.
-
-The notebook pilot runs 20 repetitions. Its baseline and sensitivity cells retain
-their two-repetition demonstration runs; use the terminal commands above for the
-full analyses, or update both `iter` and the corresponding notebook metadata.
-Restart the kernel after changing model code.
+The notebook contains the 20-repetition pilot, foundation-model checks, and pilot
+tables and plots. Run full analyses and report their saved results with the
+terminal commands above. Restart the notebook kernel after changing model code.
 
 ## Vendor sources
 
@@ -161,7 +156,7 @@ Default ensemble settings and downloaded pretrained checkpoints (check out noteb
 - `src/quadro/`: the QUADRO classifier and its mathematical solvers.
 - `vendor/`: the four renamed TabPFN source copies.
 - `scripts/run_analysis.py`: terminal analysis and reporting.
-- `notebooks/run_analysis.ipynb`: pilot and interactive results.
+- `notebooks/run_analysis.ipynb`: model checks, pilot, and pilot results.
 - `io/`: datasets, saved results, tables, and plots.
 
 ## Licenses

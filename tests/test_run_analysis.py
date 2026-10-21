@@ -91,7 +91,7 @@ class AnalysisSelectionTests(unittest.TestCase):
         self.assertEqual(options['n']['setting'], '7+')
         self.assertEqual(options['df'], 5)
         self.assertEqual(options['iter'], 3)
-        self.assertEqual(options['g_seed'], 2026)
+        self.assertEqual(options['g_seed'], 12025)
         self.assertEqual(options['n_jobs'], 2)
         self.assertEqual(options['progress_label'], 'Setting 7+ sensitivity iterations')
         self.assertEqual(options['warnings_file'],
