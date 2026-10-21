@@ -144,7 +144,7 @@ setup is needed for normal runs.
 
 ## Foundation models
 
-Default ensemble settings and downloaded pretrained checkpoints:
+Default ensemble settings and downloaded pretrained checkpoints (check out notebooks/run_analysis.ipynb):
 
 | Model | Ensemble setting | Checkpoint filename |
 |--------------------|----------|----------------------------------------------------|
