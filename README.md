@@ -10,8 +10,8 @@ Experiments use synthetic scenarios or repeated sampling from three medical data
 Clone the repository and enter its directory:
 
 ```bash
-git clone YOUR_REPOSITORY_URL tabular-benchmark
-cd tabular-benchmark
+git clone https://github.com/ghorbani-alireza/benchmark-tabpfn-medical
+cd benchmark-tabpfn-medical
 ```
 
 From the project directory, run:
