@@ -1,5 +1,7 @@
 # Benchmarking TabPFN on medical tabular data
 
+**Built with PriorLabs-TabPFN**
+
 A Python benchmark comparing logistic regression, Random Forest, XGBoost,
 CatBoost, QUADRO, TabPFN (2.5, 2.6, 3, and 3.5), EXAONE Tabular, and TabICL v2.
 Experiments use synthetic scenarios or repeated sampling from three medical datasets.
@@ -136,6 +138,8 @@ terminal commands above. Restart the notebook kernel after changing model code.
 
 The four TabPFN source packages are included in `vendor/`. No additional vendor
 setup is needed for normal runs.
+Their local names (`tabpfn_v25`, `tabpfn_v26`, `tabpfn_v3`, and `tabpfn_v35`)
+allow the versions to be imported together for side-by-side benchmarking.
 
 ## Foundation models
 
