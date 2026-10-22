@@ -14,20 +14,38 @@ TABPFN_METHODS = ['TabPFN_v25', 'TabPFN_v26', 'TabPFN_v3', 'TabPFN_v35']
 FOUNDATION_METHODS = TABPFN_METHODS + ['EXAONE', 'TabICL-V2']
 METHOD_ORDER = CLASSICAL_METHODS + FOUNDATION_METHODS
 
+# Warm hues group classical methods; cool hues group foundation models.
 COLOR_SCHEME = {
-    'L-SLR':        '#2ca02c',
-    'SLR':          '#ff7f0e',
-    'RandomForest': '#d62728',
-    'XGBoost':      '#9467bd',
-    'CatBoost':     '#8c564b',
-    'QDA':          '#17becf',
-    'Quadro':       '#bcbd22',
-    'TabPFN_v25':   '#c6dbef',
-    'TabPFN_v26':   '#6baed6',
-    'TabPFN_v3':    '#2171b5',
-    'TabPFN_v35':   '#08306b',
-    'EXAONE':       '#e377c2',
-    'TabICL-V2':    '#000000',
+    'L-SLR':        '#D27C20',
+    'SLR':          '#9F4F0B',
+    'RandomForest': '#AA8D28',
+    'XGBoost':      '#8F7023',
+    'CatBoost':     '#625018',
+    'QDA':          '#D95F59',
+    'Quadro':       '#9E292F',
+    'TabPFN_v25':   '#5F95BF',
+    'TabPFN_v26':   '#397FBA',
+    'TabPFN_v3':    '#1B5E9A',
+    'TabPFN_v35':   '#08386B',
+    'EXAONE':       '#168B8A',
+    'TabICL-V2':    '#7564A8',
+}
+
+# Line styles distinguish related methods when their curves overlap.
+LINE_STYLES = {
+    'L-SLR':        '-',
+    'SLR':          '--',
+    'RandomForest': '-',
+    'XGBoost':      '--',
+    'CatBoost':     ':',
+    'QDA':          '-',
+    'Quadro':       '--',
+    'TabPFN_v25':   '-',
+    'TabPFN_v26':   '--',
+    'TabPFN_v3':    '-.',
+    'TabPFN_v35':   ':',
+    'EXAONE':       '-',
+    'TabICL-V2':    '-',
 }
 
 # Only display labels change; saved result column names stay the same.
@@ -49,8 +67,8 @@ def _grouped_axis(ax, methods, *, style='shaded'):
     height_points = max(ax.get_window_extent().height * 72 / ax.figure.dpi, 1)
     outer_bottom = max(0.025, 10 / height_points)
     for title, members, background, border in [
-        ('Classical methods', CLASSICAL_METHODS, '#eeeeee', '#a6611a'),
-        ('Foundation models', FOUNDATION_METHODS, '#eaf2fa', '#2166ac'),
+        ('Classical methods', CLASSICAL_METHODS, '#faf7f3', '#9F4F0B'),
+        ('Foundation models', FOUNDATION_METHODS, '#f3f7fb', '#1B5E9A'),
     ]:
         group_positions = [x for x, method in zip(positions, methods) if method in members]
         if not group_positions:
@@ -110,7 +128,7 @@ def _grouped_legend(fig, handles, *, columns=1):
             labels=[DISPLAY_NAMES.get(method, method) for method in available],
             title=title, loc='lower center', bbox_to_anchor=(0.5, bottom),
             ncol=min(section_columns, len(available)), fontsize=9, title_fontsize=10,
-            frameon=True, fancybox=False, edgecolor='#999999',
+            frameon=True, fancybox=False, edgecolor='#999999', handlelength=3,
             facecolor='white', framealpha=1, borderpad=0.7,
         )
         legend.get_title().set_fontweight('bold')
@@ -184,7 +202,7 @@ def plot_roc_curves_grid(errors_dict, settings_to_show, labels=None,
             mean_auc = np.mean(df[f'{method}_AUC'])
 
             line, = ax.plot(base_fpr, mean_tpr, linewidth=2,
-                            color=color_scheme[method],
+                            color=color_scheme[method], linestyle=LINE_STYLES[method],
                             label=f"{method} (AUC={mean_auc:.3f})")
             legend_handles.setdefault(method, line)
 
@@ -364,7 +382,7 @@ def plot_boxplots_grid_lands(errors_dict, settings_to_show, metric='MSE', labels
         ax.set_xticklabels(xtick_labels, rotation=25, ha='right')
         ax.set_ylabel(metric)
         ax.set_title(_title(setting, labels), pad=14 if group_frames else 30)
-        ax.grid(axis='y', alpha=0.3, color='white')
+        ax.grid(axis='y', alpha=0.3, color='#b0b0b0')
         if group_frames:
             _pad_group_frames(ax)
 
@@ -416,7 +434,7 @@ def plot_calibration_grid(errors_dict, settings_to_show, labels=None, n_bins=10,
             prob_true, prob_pred = calibration_curve(
                 y_all, proba_all, n_bins=n_bins, strategy=strategy)
             line, = ax.plot(prob_pred, prob_true, marker='o', linewidth=2,
-                            color=color_scheme[model], label=model)
+                            color=color_scheme[model], linestyle=LINE_STYLES[model], label=model)
             legend_handles.setdefault(model, line)
 
         ax.plot([0, 1], [0, 1], linestyle='--', color='gray', linewidth=1.5)
@@ -525,7 +543,7 @@ def plot_runtime_barplot_simple(errors_dict, settings_to_show, labels=None,
     ax.set_ylabel('Average runtime (seconds)', fontsize=13)
     ax.set_title('Mean Runtime per Method', fontsize=14, pad=30)
     ax.margins(y=0.15)
-    ax.grid(axis='y', alpha=0.3, color='white')
+    ax.grid(axis='y', alpha=0.3, color='#b0b0b0')
     plt.tight_layout()
 
     if save_path:
