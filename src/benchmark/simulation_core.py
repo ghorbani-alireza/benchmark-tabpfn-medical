@@ -24,6 +24,7 @@ from .model_definitions import (
     run_tabpfn_v3,
     run_tabpfn_v35,
     run_exaone,
+    run_tabicl_v1,
     run_tabicl
 )
 from .utils import capture_output
@@ -73,7 +74,7 @@ def _run_and_store(errors, prefix, fn, y_test, *args, **kwargs):
 def simulation(n, mu, sigma1, sigma2, df=None, dist="Normal", iter=100, g_seed=2025, *, include_exaone=False, warnings_file=None, progress_label=None):
     """Generate independent training and test samples, then run each model for every repetition.
     
-    Return the results and captured warnings. include_exaone=True is used for the notebook pilot.
+    Return the results and captured warnings. include_exaone=True is used for the pilot.
     progress_label optionally identifies the setting in the progress bar.
     """
     initialize_worker()
@@ -132,6 +133,10 @@ def simulation(n, mu, sigma1, sigma2, df=None, dist="Normal", iter=100, g_seed=2
         'EXAONE_SetupTime': [], 'EXAONE_TuneTime': [], 'EXAONE_FitTime': [], 'EXAONE_PredictTime': [],
         'EXAONE_Brier': [], 'EXAONE_CalSlope': [], 'EXAONE_CalIntercept': [],
         'EXAONE_Probas': [],
+        'TabICL-V1_MSE': [], 'TabICL-V1_AUC': [], 'TabICL-V1_Time': [], 'TabICL-V1_FPR': [], 'TabICL-V1_TPR': [],
+        'TabICL-V1_SetupTime': [], 'TabICL-V1_TuneTime': [], 'TabICL-V1_FitTime': [], 'TabICL-V1_PredictTime': [],
+        'TabICL-V1_Brier': [], 'TabICL-V1_CalSlope': [], 'TabICL-V1_CalIntercept': [],
+        'TabICL-V1_Probas': [],
         'TabICL-V2_MSE': [], 'TabICL-V2_AUC': [], 'TabICL-V2_Time': [], 'TabICL-V2_FPR': [], 'TabICL-V2_TPR': [],
         'TabICL-V2_SetupTime': [], 'TabICL-V2_TuneTime': [], 'TabICL-V2_FitTime': [], 'TabICL-V2_PredictTime': [],
         'TabICL-V2_Brier': [], 'TabICL-V2_CalSlope': [], 'TabICL-V2_CalIntercept': [],
@@ -227,6 +232,9 @@ def simulation(n, mu, sigma1, sigma2, df=None, dist="Normal", iter=100, g_seed=2
                 _run_and_store(errors, 'EXAONE', run_exaone, y_test,
                        X_train, X_test, y_train, y_test, random_state=i+g_seed)
     
+            _run_and_store(errors, 'TabICL-V1', run_tabicl_v1, y_test,
+                   X_train, X_test, y_train, y_test, random_state=i+g_seed)
+
             _run_and_store(errors, 'TabICL-V2', run_tabicl, y_test,
                    X_train, X_test, y_train, y_test, random_state=i+g_seed)
     
@@ -301,6 +309,10 @@ def evaluate_on_sim_data(n, mu, sigma1, sigma2, df=None, dist="Normal", iter=100
         'EXAONE_SetupTime': [], 'EXAONE_TuneTime': [], 'EXAONE_FitTime': [], 'EXAONE_PredictTime': [],
         'EXAONE_Brier': [], 'EXAONE_CalSlope': [], 'EXAONE_CalIntercept': [],
         'EXAONE_Probas': [],
+        'TabICL-V1_MSE': [], 'TabICL-V1_AUC': [], 'TabICL-V1_Time': [], 'TabICL-V1_FPR': [], 'TabICL-V1_TPR': [],
+        'TabICL-V1_SetupTime': [], 'TabICL-V1_TuneTime': [], 'TabICL-V1_FitTime': [], 'TabICL-V1_PredictTime': [],
+        'TabICL-V1_Brier': [], 'TabICL-V1_CalSlope': [], 'TabICL-V1_CalIntercept': [],
+        'TabICL-V1_Probas': [],
         'TabICL-V2_MSE': [], 'TabICL-V2_AUC': [], 'TabICL-V2_Time': [], 'TabICL-V2_FPR': [], 'TabICL-V2_TPR': [],
         'TabICL-V2_SetupTime': [], 'TabICL-V2_TuneTime': [], 'TabICL-V2_FitTime': [], 'TabICL-V2_PredictTime': [],
         'TabICL-V2_Brier': [], 'TabICL-V2_CalSlope': [], 'TabICL-V2_CalIntercept': [],
@@ -345,6 +357,7 @@ def evaluate_on_sim_data(n, mu, sigma1, sigma2, df=None, dist="Normal", iter=100
                 ('TabPFN_v3', 'TabPFN_v3_'),
                 ('TabPFN_v35', 'TabPFN_v35_'),
                 ('EXAONE', 'EXAONE_'),
+                ('TabICL-V1', 'TabICL-V1_'),
                 ('TabICL-V2', 'TabICL-V2_')
             ]:
                 if key == "EXAONE" and not include_exaone:
@@ -457,6 +470,9 @@ def _single_sim_iteration(i, n1_tr, n2_tr, n1_te, n2_te, mu1, mu2,
             X_train, X_test, y_train, y_test, random_state=i+g_seed),
         'TabPFN_v35': _run_and_pack(
             run_tabpfn_v35, y_test,
+            X_train, X_test, y_train, y_test, random_state=i+g_seed),
+        'TabICL-V1': _run_and_pack(
+            run_tabicl_v1, y_test,
             X_train, X_test, y_train, y_test, random_state=i+g_seed),
         'TabICL-V2': _run_and_pack(
             run_tabicl, y_test,

@@ -51,7 +51,7 @@ model_names = (
     'run_linear_sparse_logistic_regression', 'run_sparse_logistic_regression',
     'run_random_forest', 'run_xgboost', 'run_catboost', 'run_qda', 'run_quadro',
     'run_tabpfn_v25', 'run_tabpfn_v26', 'run_tabpfn_v3', 'run_tabpfn_v35',
-    'run_exaone', 'run_tabicl',
+    'run_exaone', 'run_tabicl_v1', 'run_tabicl',
 )
 
 

@@ -11,7 +11,7 @@ from .config import PLOTS_PATH
 # after CatBoost. TabPFN versions stay together within foundations.
 CLASSICAL_METHODS = ['L-SLR', 'SLR', 'RandomForest', 'XGBoost', 'CatBoost', 'QDA', 'Quadro']
 TABPFN_METHODS = ['TabPFN_v25', 'TabPFN_v26', 'TabPFN_v3', 'TabPFN_v35']
-FOUNDATION_METHODS = TABPFN_METHODS + ['EXAONE', 'TabICL-V2']
+FOUNDATION_METHODS = TABPFN_METHODS + ['EXAONE', 'TabICL-V1', 'TabICL-V2']
 METHOD_ORDER = CLASSICAL_METHODS + FOUNDATION_METHODS
 
 # Warm hues group classical methods; cool hues group foundation models.
@@ -28,6 +28,7 @@ COLOR_SCHEME = {
     'TabPFN_v3':    '#1B5E9A',
     'TabPFN_v35':   '#08386B',
     'EXAONE':       '#168B8A',
+    'TabICL-V1':    '#9B8AC4',
     'TabICL-V2':    '#7564A8',
 }
 
@@ -45,12 +46,14 @@ LINE_STYLES = {
     'TabPFN_v3':    '-.',
     'TabPFN_v35':   ':',
     'EXAONE':       '-',
-    'TabICL-V2':    '-',
+    'TabICL-V1':    '-',
+    'TabICL-V2':    '--',
 }
 
 # Only display labels change; saved result column names stay the same.
 DISPLAY_NAMES = {
     'Quadro': 'QUADRO',
+    'TabICL-V1': 'TabICL v1', 'TabICL-V2': 'TabICL v2',
     'TabPFN_v25': 'TabPFN 2.5', 'TabPFN_v26': 'TabPFN 2.6',
     'TabPFN_v3': 'TabPFN 3', 'TabPFN_v35': 'TabPFN 3.5',
 }

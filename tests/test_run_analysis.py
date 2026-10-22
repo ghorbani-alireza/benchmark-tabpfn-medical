@@ -61,6 +61,32 @@ class AnalysisSelectionTests(unittest.TestCase):
         with contextlib.redirect_stdout(io.StringIO()):
             cli.main([analysis, '--repetitions', '3', '--output', str(self.output), *options])
 
+    def test_pilot_defaults_to_twenty_sequential_setting_two_runs_with_exaone(self):
+        with contextlib.redirect_stdout(io.StringIO()):
+            cli.main(['pilot', '--output', str(self.output)])
+        options = self.benchmark.simulation.call_args.kwargs
+        self.assertEqual(options['n']['setting'], 2)
+        self.assertEqual(options['iter'], 20)
+        self.assertEqual(options['g_seed'], 2025)
+        self.assertTrue(options['include_exaone'])
+        self.assertNotIn('n_jobs', options)
+        self.core.evaluate_on_sim_data.assert_not_called()
+        save = self.benchmark.save_outputs.call_args
+        self.assertEqual(save.args, ({'result': 'main'}, 'setting2_pilot'))
+        self.assertEqual(save.kwargs['meta']['execution'], 'sequential')
+        self.assertEqual(save.kwargs['meta']['workers'], 1)
+        self.assertTrue(save.kwargs['meta']['include_exaone'])
+
+    def test_pilot_accepts_overrides_without_parallel_calls(self):
+        self.run_cli('pilot', '--settings', '3', '--seed', '50', '--jobs', '2')
+        options = self.benchmark.simulation.call_args.kwargs
+        self.assertEqual(options['n']['setting'], 3)
+        self.assertEqual(options['iter'], 3)
+        self.assertEqual(options['g_seed'], 50)
+        self.assertTrue(options['include_exaone'])
+        self.assertNotIn('n_jobs', options)
+        self.core.evaluate_on_sim_data.assert_not_called()
+
     def test_main_subset_preserves_ids_order_and_saves_only_selected_results(self):
         self.run_cli('simulation', '--settings', '5', '2', '5')
         self.assertEqual(
@@ -142,6 +168,8 @@ class AnalysisSelectionTests(unittest.TestCase):
             ('report', ['--datasets', 'echo'], '--datasets is only available'),
             ('simulation', ['--settings'], 'expected at least one argument'),
             ('resampling', ['--datasets'], 'expected at least one argument'),
+            ('pilot', ['--settings', '7+'], 'unknown --settings'),
+            ('pilot', ['--baseline', 'unused'], '--baseline is only available'),
         ]
         for analysis, options, message in cases:
             with self.subTest(analysis=analysis, options=options):

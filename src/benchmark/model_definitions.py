@@ -677,6 +677,47 @@ def run_exaone(X_train, X_test, y_train, y_test, random_state=None):
     
     
     ################################################################################
+# TabICLv1
+def run_tabicl_v1(X_train, X_test, y_train, y_test, random_state=None):
+    #
+    setup_start = perf_counter()
+    _configure_pretrained_credentials()
+    from tabicl import TabICLClassifier
+    clf = TabICLClassifier(
+        device="cpu",
+        n_jobs=1,
+        checkpoint_version="tabicl-classifier-v1-20250208.ckpt",
+        verbose=False,
+        random_state=random_state if random_state is not None else 42,
+    )
+    setup_time = perf_counter() - setup_start
+
+    #
+    tune_time = 0.0
+
+    #
+    fit_start = perf_counter()
+    clf.fit(X_train, y_train)
+    fit_time = perf_counter() - fit_start
+
+    #
+    predict_start = perf_counter()
+    probabilities = clf.predict_proba(X_test)
+    pred = clf.classes_[np.argmax(probabilities, axis=1)]
+    proba = probabilities[:, 1]
+    predict_time = perf_counter() - predict_start
+
+    fpr, tpr, _ = roc_curve(y_test, proba)
+    brier = np.mean((proba - y_test) ** 2)
+    return (
+        balanced_accuracy_score(y_test, pred),
+        roc_auc_score(y_test, proba),
+        mean_squared_error(y_test, pred),
+        fpr, tpr, proba, brier,
+        setup_time, tune_time, fit_time, predict_time,
+    )
+
+
 # TabICLv2
 def run_tabicl(X_train, X_test, y_train, y_test, random_state=None):
     #
@@ -686,7 +727,7 @@ def run_tabicl(X_train, X_test, y_train, y_test, random_state=None):
     clf = TabICLClassifier(
         device="cpu",
         n_jobs=1,
-        n_estimators=8,  #e_est=8 default
+        checkpoint_version="tabicl-classifier-v2-20260212.ckpt",
         verbose=False,
         random_state=random_state if random_state is not None else 42,
     )

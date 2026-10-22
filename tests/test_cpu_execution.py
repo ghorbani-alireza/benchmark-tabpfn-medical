@@ -35,7 +35,7 @@ def example_iteration(*args):
                 np.array([.1, .9]), .01, 1., 0., .001, .002, .003, .004)
     return {**{name: measures for name in (
         'L-SLR', 'SLR', 'RandomForest', 'XGBoost', 'CatBoost', 'QDA', 'Quadro',
-        'TabPFN_v25', 'TabPFN_v26', 'TabPFN_v3', 'TabPFN_v35', 'TabICL-V2',
+        'TabPFN_v25', 'TabPFN_v26', 'TabPFN_v3', 'TabPFN_v35', 'TabICL-V1', 'TabICL-V2',
     )}, 'y_test': y}
 
 

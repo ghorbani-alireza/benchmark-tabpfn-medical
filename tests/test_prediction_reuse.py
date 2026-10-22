@@ -82,6 +82,7 @@ class PredictionReuseTests(unittest.TestCase):
             (models.run_tabpfn_v3, 'tabpfn_v3', 'TabPFNClassifier'),
             (models.run_tabpfn_v35, 'tabpfn_v35', 'TabPFNClassifier'),
             (models.run_exaone, 'exaonetabular', 'EXAONETabularClassifier'),
+            (models.run_tabicl_v1, 'tabicl', 'TabICLClassifier'),
             (models.run_tabicl, 'tabicl', 'TabICLClassifier'),
         ):
             with self.subTest(runner=runner.__name__):

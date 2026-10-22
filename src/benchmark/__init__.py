@@ -17,6 +17,7 @@ from .model_definitions import (
     run_tabpfn_v3,
     run_tabpfn_v35,
     run_exaone,
+    run_tabicl_v1,
     run_tabicl       
 )
 from .utils import (
@@ -28,7 +29,9 @@ from .utils import (
 )
 from .table_functions import (
     build_measures_table, 
-    build_gain_table
+    build_gain_table,
+    build_best_methods_table,
+    build_effect_table
 )
 from .plot_functions import (
     plot_roc_curves_grid,

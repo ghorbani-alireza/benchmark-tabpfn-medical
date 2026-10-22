@@ -3,7 +3,7 @@
 **Built with PriorLabs-TabPFN**
 
 A Python benchmark comparing logistic regression, Random Forest, XGBoost,
-CatBoost, QDA, QUADRO, TabPFN (2.5, 2.6, 3, and 3.5), EXAONE Tabular, and TabICL v2.
+CatBoost, QDA, QUADRO, TabPFN (2.5, 2.6, 3, and 3.5), EXAONE Tabular, and TabICL v1/v2.
 Experiments use synthetic scenarios or repeated sampling from three medical datasets.
 
 QDA uses standardized predictors and selects covariance regularization (`reg_param`)
@@ -80,8 +80,16 @@ apply. For a batch job, include these exports in the job script.
 
 ## 2. Run the full analyses from the terminal
 
-These commands run all model runners except EXAONE, which is enabled in the
-notebook pilot.
+The pilot includes EXAONE; the full analyses run all other model runners.
+
+Pilot: setting 2, 20 repetitions, using the normal sequential `simulation()` function:
+
+```bash
+uv run --locked python scripts/run_analysis.py pilot --output io/sim_results/pilot_setting2_new
+```
+
+The pilot also accepts `--repetitions`, `--seed`, and `--settings`. Choose a new
+output directory for each run.
 
 Main simulation: all eight baseline settings:
 
@@ -130,12 +138,33 @@ uv run --locked python scripts/run_analysis.py report --results io/sim_results/s
 uv run --locked python scripts/run_analysis.py report --results io/real_data_results/main
 ```
 
+For sensitivity changes relative to the matching main simulation settings:
+
+```bash
+uv run --locked python scripts/run_analysis.py report --results io/sim_results/sensitivity --baseline io/sim_results/main
+```
+
 Reports save `tables/` and `plots/` inside the selected results directory. The
 same command works for a saved pilot directory.
 
-The notebook contains the 20-repetition pilot, foundation-model checks, and pilot
-tables and plots. Run full analyses and report their saved results with the
-terminal commands above. Restart the notebook kernel after changing model code.
+Tables include:
+
+- `measures.csv`: each method's mean and SD.
+- `best_methods.csv`: the best and second-best classical and foundation methods per measure.
+- `best_vs_best.csv`: within-run foundation minus classical differences, summarized by mean and SD.
+- `model_effects.csv`: each model versus the best method in the other group, with the same difference convention.
+- `sample_size_changes.csv`: sensitivity mean minus baseline mean for every measure (`--baseline` required).
+
+Rankings use averages across repetitions, with higher AUC or lower error/time
+preferred. Calibration ranks use mean absolute distance from slope 1 or intercept
+0. Effects retain the raw measure: a positive AUC difference favors the foundation
+model; negative error/time differences favor it. Rankings and comparisons are
+descriptive summaries of the saved runs.
+
+In the notebook, run **Tables from saved results**, then the plot cells. Set
+`RESULTS_DIR` to the saved pilot, simulation, sensitivity, or real-data directory;
+set `BASELINE_DIR` for sensitivity changes. These cells run without the pilot or
+package-check cells. Restart the kernel after changing model code.
 
 ## Vendor sources
 
@@ -146,7 +175,7 @@ allow the versions to be imported together for side-by-side benchmarking.
 
 ## Foundation models
 
-Default ensemble settings and downloaded pretrained checkpoints (check out notebooks/run_analysis.ipynb):
+Default ensemble settings and pretrained checkpoint filenames (check out notebooks/run_analysis.ipynb):
 
 | Model | Ensemble setting | Checkpoint filename |
 |--------------------|----------|----------------------------------------------------|
@@ -155,7 +184,12 @@ Default ensemble settings and downloaded pretrained checkpoints (check out noteb
 | TabPFN 3           | `"auto"` | `tabpfn-v3-classifier-v3_default.ckpt`             |
 | TabPFN 3.5         | `"auto"` | `tabpfn-v3.5-20260909.safetensors`                 |
 | EXAONE Tabular 1.0 | `8`      | `exaone-tabular-classifier-v1_default.safetensors` |
+| TabICL v1          | `8`      | `tabicl-classifier-v1-20250208.ckpt`               |
 | TabICL v2          | `8`      | `tabicl-classifier-v2-20260212.ckpt`               |
+
+Both TabICL runners leave the ensemble size unset and use the installed package's
+default (currently 8). Checkpoints select the original v1 and v2 models using
+the [TabICL API](https://tabicl.readthedocs.io/en/latest/api.html).
 
 ## Files
 
@@ -163,7 +197,7 @@ Default ensemble settings and downloaded pretrained checkpoints (check out noteb
 - `src/quadro/`: the QUADRO classifier and its mathematical solvers.
 - `vendor/`: the four renamed TabPFN source copies.
 - `scripts/run_analysis.py`: terminal analysis and reporting.
-- `notebooks/run_analysis.ipynb`: model checks, pilot, and pilot results.
+- `notebooks/run_analysis.ipynb`: model checks, pilot, and reports from saved results.
 - `io/`: datasets, saved results, tables, and plots.
 
 ## Licenses
