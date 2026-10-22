@@ -399,6 +399,70 @@ def run_catboost(X_train, X_test, y_train, y_test, X_train_sub, y_train_sub, X_v
 
 
 ################################################################################
+# QDA
+def run_qda(X_train, X_test, y_train, y_test, X_train_sub, y_train_sub, X_val, y_val, random_state=None):
+    """Scale explicitly, tune QDA regularization, fit once, and return metrics/times."""
+
+    # setup
+    setup_start = perf_counter()
+    from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
+    qda = QuadraticDiscriminantAnalysis()
+    # Positive regularization also covers singular class covariance estimates.
+    param_grid = {'reg_param': [0.01, 0.05, 0.1, 0.2, 0.5, 1.0]}
+    grid_search = GridSearchCV(
+        qda,
+        param_grid,
+        cv=[(np.arange(len(X_train_sub)), np.arange(len(X_train_sub), len(X_train_sub) + len(X_val)))],
+        scoring='roc_auc',
+        n_jobs=1,
+        refit=False,
+        error_score='raise',
+    )
+    setup_time = perf_counter() - setup_start
+
+    # tune
+    tune_start = perf_counter()
+    tune_scaler = StandardScaler()
+    X_train_sub_scaled = tune_scaler.fit_transform(X_train_sub)
+    X_val_scaled = tune_scaler.transform(X_val)
+    grid_search.fit(
+        np.vstack((X_train_sub_scaled, X_val_scaled)),
+        np.hstack((y_train_sub, y_val)),
+    )
+    best_reg_param = grid_search.best_params_['reg_param']
+    tune_time = perf_counter() - tune_start
+
+    # fit
+    fit_start = perf_counter()
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    qda.set_params(reg_param=best_reg_param)
+    qda.fit(X_train_scaled, y_train)
+    fit_time = perf_counter() - fit_start
+
+    # predict
+    predict_start = perf_counter()
+    X_test_scaled = scaler.transform(X_test)
+    probabilities = qda.predict_proba(X_test_scaled)
+    pred = qda.classes_[np.argmax(probabilities, axis=1)]
+    proba = probabilities[:, 1]
+    predict_time = perf_counter() - predict_start
+
+    fpr, tpr, _ = roc_curve(y_test, proba)
+    brier = np.mean((proba - y_test) ** 2)
+    return (
+        balanced_accuracy_score(y_test, pred),
+        roc_auc_score(y_test, proba),
+        mean_squared_error(y_test, pred),
+        fpr,
+        tpr,
+        proba,
+        brier,
+        setup_time, tune_time, fit_time, predict_time,
+    )
+
+
+################################################################################
 # Quadro
 def run_quadro(X_train, X_test, y_train, y_test,
                X_train_sub, y_train_sub, X_val, y_val,

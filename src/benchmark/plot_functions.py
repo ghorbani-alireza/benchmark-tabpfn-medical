@@ -7,9 +7,9 @@ from sklearn.calibration import calibration_curve
 from .config import PLOTS_PATH
 
 
-# All plots use this order. QUADRO belongs with the classical methods,
-# immediately after CatBoost. TabPFN versions stay together within foundations.
-CLASSICAL_METHODS = ['L-SLR', 'SLR', 'RandomForest', 'XGBoost', 'CatBoost', 'Quadro']
+# All plots use this order. QDA and QUADRO belong with the classical methods,
+# after CatBoost. TabPFN versions stay together within foundations.
+CLASSICAL_METHODS = ['L-SLR', 'SLR', 'RandomForest', 'XGBoost', 'CatBoost', 'QDA', 'Quadro']
 TABPFN_METHODS = ['TabPFN_v25', 'TabPFN_v26', 'TabPFN_v3', 'TabPFN_v35']
 FOUNDATION_METHODS = TABPFN_METHODS + ['EXAONE', 'TabICL-V2']
 METHOD_ORDER = CLASSICAL_METHODS + FOUNDATION_METHODS
@@ -20,6 +20,7 @@ COLOR_SCHEME = {
     'RandomForest': '#d62728',
     'XGBoost':      '#9467bd',
     'CatBoost':     '#8c564b',
+    'QDA':          '#17becf',
     'Quadro':       '#bcbd22',
     'TabPFN_v25':   '#c6dbef',
     'TabPFN_v26':   '#6baed6',

@@ -78,9 +78,9 @@ def _make_settings():
     S[7] = dict(
         label='Setting 7: Sparse Gaussian (p=40)',
         n={'n1_tr': 100, 'n2_tr': 100, 'n1_te': 500, 'n2_te': 500},
-        mu={'mu1': np.zeros(40), 'mu2': np.array([0.7]*5 + [0]*35)},
+        mu={'mu1': np.zeros(40), 'mu2': np.array([0.7]*10 + [0]*30)},
         sigma1=np.eye(40),
-        sigma2=np.diag([1.3]*5 + [1]*35),
+        sigma2=np.diag([1.3]*10 + [1]*30),
         dist='Normal'
     )
 
@@ -88,9 +88,9 @@ def _make_settings():
     S[8] = dict(
         label='Setting 8: High Dimensional Sparse Gaussian (p=100)',
         n={'n1_tr': 100, 'n2_tr': 100, 'n1_te': 500, 'n2_te': 500},
-        mu={'mu1': np.zeros(100), 'mu2': np.array([0.7]*5 + [0]*95)},
+        mu={'mu1': np.zeros(100), 'mu2': np.array([0.7]*10 + [0]*90)},
         sigma1=np.eye(100),
-        sigma2=np.diag([1.3]*5 + [1]*95),
+        sigma2=np.diag([1.3]*10 + [1]*90),
         dist='Normal'
     )
 

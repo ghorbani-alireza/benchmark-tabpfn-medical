@@ -6,7 +6,7 @@ from .config import TABLES_PATH
 
 METHODS = ['L-SLR', 'SLR', 'RandomForest', 'XGBoost', 'CatBoost',
            'TabPFN_v25', 'TabPFN_v26', 'TabPFN_v3', 'TabPFN_v35',
-           'EXAONE', 'TabICL-V2', 'Quadro']
+           'EXAONE', 'TabICL-V2', 'QDA', 'Quadro']
 
 # Scalar metrics only. FPR/TPR/Probas are list-valued — used by plots.
 METRICS = ['AUC', 'MSE', 'Brier', 'Time', 'SetupTime', 'TuneTime',

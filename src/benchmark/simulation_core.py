@@ -17,6 +17,7 @@ from .model_definitions import (
     run_random_forest,
     run_xgboost,
     run_catboost,
+    run_qda,
     run_quadro,
     run_tabpfn_v25,
     run_tabpfn_v26,
@@ -103,6 +104,10 @@ def simulation(n, mu, sigma1, sigma2, df=None, dist="Normal", iter=100, g_seed=2
         'CatBoost_SetupTime': [], 'CatBoost_TuneTime': [], 'CatBoost_FitTime': [], 'CatBoost_PredictTime': [],
         'CatBoost_Brier': [], 'CatBoost_CalSlope': [], 'CatBoost_CalIntercept': [],
         'CatBoost_Probas': [],
+        'QDA_MSE': [], 'QDA_AUC': [], 'QDA_Time': [], 'QDA_FPR': [], 'QDA_TPR': [],
+        'QDA_SetupTime': [], 'QDA_TuneTime': [], 'QDA_FitTime': [], 'QDA_PredictTime': [],
+        'QDA_Brier': [], 'QDA_CalSlope': [], 'QDA_CalIntercept': [],
+        'QDA_Probas': [],
         'Quadro_MSE': [], 'Quadro_AUC': [], 'Quadro_Time': [], 'Quadro_FPR': [], 'Quadro_TPR': [],
         'Quadro_SetupTime': [], 'Quadro_TuneTime': [], 'Quadro_FitTime': [], 'Quadro_PredictTime': [],
         'Quadro_Brier': [], 'Quadro_CalSlope': [], 'Quadro_CalIntercept': [], 
@@ -198,6 +203,10 @@ def simulation(n, mu, sigma1, sigma2, df=None, dist="Normal", iter=100, g_seed=2
                    X_train, X_test, y_train, y_test,
                    X_train_sub, y_train_sub, X_val, y_val, random_state=i+g_seed)
 
+            _run_and_store(errors, 'QDA', run_qda, y_test,
+                   X_train, X_test, y_train, y_test,
+                   X_train_sub, y_train_sub, X_val, y_val, random_state=i+g_seed)
+
             _run_and_store(errors, 'Quadro', run_quadro, y_test, 
                    X_train, X_test, y_train, y_test,
                    X_train_sub, y_train_sub, X_val, y_val, random_state=i+g_seed)
@@ -264,6 +273,10 @@ def evaluate_on_sim_data(n, mu, sigma1, sigma2, df=None, dist="Normal", iter=100
         'CatBoost_SetupTime': [], 'CatBoost_TuneTime': [], 'CatBoost_FitTime': [], 'CatBoost_PredictTime': [],
         'CatBoost_Brier': [], 'CatBoost_CalSlope': [], 'CatBoost_CalIntercept': [],
         'CatBoost_Probas': [],
+        'QDA_MSE': [], 'QDA_AUC': [], 'QDA_Time': [], 'QDA_FPR': [], 'QDA_TPR': [],
+        'QDA_SetupTime': [], 'QDA_TuneTime': [], 'QDA_FitTime': [], 'QDA_PredictTime': [],
+        'QDA_Brier': [], 'QDA_CalSlope': [], 'QDA_CalIntercept': [],
+        'QDA_Probas': [],
         'Quadro_MSE': [], 'Quadro_AUC': [], 'Quadro_Time': [], 'Quadro_FPR': [], 'Quadro_TPR': [],
         'Quadro_SetupTime': [], 'Quadro_TuneTime': [], 'Quadro_FitTime': [], 'Quadro_PredictTime': [],
         'Quadro_Brier': [], 'Quadro_CalSlope': [], 'Quadro_CalIntercept': [], 
@@ -325,6 +338,7 @@ def evaluate_on_sim_data(n, mu, sigma1, sigma2, df=None, dist="Normal", iter=100
                 ('RandomForest', 'RandomForest_'),
                 ('XGBoost', 'XGBoost_'),
                 ('CatBoost', 'CatBoost_'),
+                ('QDA', 'QDA_'),
                 ('Quadro', 'Quadro_'),
                 ('TabPFN_v25', 'TabPFN_v25_'),
                 ('TabPFN_v26', 'TabPFN_v26_'),
@@ -419,6 +433,11 @@ def _single_sim_iteration(i, n1_tr, n2_tr, n1_te, n2_te, mu1, mu2,
             random_state=i+g_seed),
         'CatBoost': _run_and_pack(
             run_catboost, y_test,
+            X_train, X_test, y_train, y_test,
+            X_train_sub, y_train_sub, X_val, y_val,
+            random_state=i+g_seed),
+        'QDA': _run_and_pack(
+            run_qda, y_test,
             X_train, X_test, y_train, y_test,
             X_train_sub, y_train_sub, X_val, y_val,
             random_state=i+g_seed),

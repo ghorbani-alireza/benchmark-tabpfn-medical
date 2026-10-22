@@ -8,6 +8,7 @@ from unittest.mock import patch
 import numpy as np
 from catboost import CatBoostClassifier
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import balanced_accuracy_score
 from sklearn.model_selection import train_test_split
@@ -37,6 +38,7 @@ class PredictionReuseTests(unittest.TestCase):
             (models.run_random_forest, RandomForestClassifier),
             (models.run_xgboost, XGBClassifier),
             (models.run_catboost, CatBoostClassifier),
+            (models.run_qda, QuadraticDiscriminantAnalysis),
         ):
             with self.subTest(runner=runner.__name__):
                 calls = []
@@ -58,8 +60,8 @@ class PredictionReuseTests(unittest.TestCase):
                         X_sub, y_sub, X_val, y_val, random_state=36,
                     )
 
-                # Logistic tuning uses decision scores; tree tuning uses probabilities.
-                self.assertEqual(len(calls), 1 if classifier is LogisticRegression else 10)
+                # Logistic and QDA tuning use decision scores; trees use probabilities.
+                self.assertEqual(len(calls), 1 if classifier in (LogisticRegression, QuadraticDiscriminantAnalysis) else 10)
                 final_model, test_features, probabilities = calls[-1]
                 kwargs = {'thread_count': 1} if classifier is CatBoostClassifier else {}
                 native_pred = final_model.predict(test_features, **kwargs)

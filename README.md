@@ -3,8 +3,11 @@
 **Built with PriorLabs-TabPFN**
 
 A Python benchmark comparing logistic regression, Random Forest, XGBoost,
-CatBoost, QUADRO, TabPFN (2.5, 2.6, 3, and 3.5), EXAONE Tabular, and TabICL v2.
+CatBoost, QDA, QUADRO, TabPFN (2.5, 2.6, 3, and 3.5), EXAONE Tabular, and TabICL v2.
 Experiments use synthetic scenarios or repeated sampling from three medical datasets.
+
+QDA uses standardized predictors and selects covariance regularization (`reg_param`)
+from `[0.01, 0.05, 0.1, 0.2, 0.5, 1.0]` by validation AUC before a final full-training fit.
 
 
 ## 1. Prepare the environment

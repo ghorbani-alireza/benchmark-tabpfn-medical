@@ -11,6 +11,7 @@ from .model_definitions import (
     run_random_forest,
     run_xgboost,
     run_catboost,
+    run_qda,
     run_tabpfn_v25,
     run_tabpfn_v26,
     run_tabpfn_v3,
