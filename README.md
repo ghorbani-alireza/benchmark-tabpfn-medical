@@ -35,12 +35,13 @@ HF_TOKEN = "your_huggingface_token"
 TABPFN_TOKEN = "your_tabpfn_token"
 ```
 
-For real-data resampling, obtain the datasets through [OSF](https://osf.io/hjs92)
-and put these files in `io/real_data/`:
+For real-data resampling, we used 3 datasets:
 
 - `data1_echo_notes.pkl`
 - `data2_blood_glucose_management.pkl`
 - `data3_blood_gas_oximetry.pkl`
+
+NOTE: The dataset cannot be made publicly available because they are electronic health records. Sharing these data externally without proper consent could compromise patient privacy and would violate the Institutional Review Board’s approval for the study. 
 
 ### Troubleshooting
 
